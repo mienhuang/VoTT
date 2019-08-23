@@ -272,9 +272,20 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
      * @returns {void}
      */
     private onSelectionEnd = (regionData: RegionData) => {
+        console.log('STEP-INFO, start create a new region');
         if (CanvasHelpers.isEmpty(regionData)) {
             return;
         }
+        const { height, width, x, y, points } = this.editor.scaleRegionToSourceSize(
+            regionData,
+            this.state.currentAsset.asset.size.width,
+            this.state.currentAsset.asset.size.height,
+        );
+        if (!(height * width)) {
+            // INFO: avoid add a dot to the page as a region
+            return;
+        }
+
         const id = shortid.generate();
 
         this.editor.RM.addRegion(id, regionData, null);
@@ -282,23 +293,18 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
         this.template = new Rect(regionData.width, regionData.height);
 
         // RegionData not serializable so need to extract data
-        const scaledRegionData = this.editor.scaleRegionToSourceSize(
-            regionData,
-            this.state.currentAsset.asset.size.width,
-            this.state.currentAsset.asset.size.height,
-        );
         const lockedTags = this.props.lockedTags;
         const newRegion = {
             id,
             type: this.editorModeToType(this.props.editorMode),
             tags: lockedTags || [],
             boundingBox: {
-                height: scaledRegionData.height,
-                width: scaledRegionData.width,
-                left: scaledRegionData.x,
-                top: scaledRegionData.y,
+                height,
+                width,
+                left: x,
+                top: y,
             },
-            points: scaledRegionData.points,
+            points,
         };
         if (lockedTags && lockedTags.length) {
             this.editor.RM.updateTagsById(id, CanvasHelpers.getTagsDescriptor(this.props.project.tags, newRegion));

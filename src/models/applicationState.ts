@@ -312,6 +312,7 @@ export interface IRegion {
     tags: string[];
     points?: IPoint[];
     boundingBox?: IBoundingBox;
+    faceId?: number;
 }
 
 /**
