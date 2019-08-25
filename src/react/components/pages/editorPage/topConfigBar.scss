@@ -1,0 +1,56 @@
+.top-config {
+  display: flex;
+  align-items: center;
+  margin: 10px;
+  input {
+    height: 30px;
+    width: 80px;
+    padding: 4px;
+    border: 0;
+    border: 1px solid #aaa;
+    background-color: transparent;
+    caret-color: #fff;
+    color: #aaa;
+    font-size: 13px;
+  }
+  button {
+    height: 30px;
+    width: 50px;
+    border: none;
+    color: #333;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none !important;
+  }
+  span {
+    font-size: 13px;
+  }
+  & > div {
+    cursor: default;
+    margin-left: 10px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .action-item {
+    width: 30px;
+    border: 1px solid #aaa;
+    cursor: pointer;
+    & > i {
+      line-height: 34px;
+      font-size: 18px;
+      color: #aaa;
+    }
+    &:hover {
+      border-color: dodgerblue;
+      & > i {
+        font-size: 24px;
+      }
+    }
+  }
+}

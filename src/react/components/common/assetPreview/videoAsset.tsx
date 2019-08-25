@@ -71,7 +71,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                 fluid={false}
                 width="100%"
                 height="100%"
-                autoPlay={autoPlay}
+                autoPlay={false}
                 src={videoPath}
                 onError={this.props.onError}
                 crossOrigin="anonymous">
@@ -231,7 +231,8 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             this.raiseActivated();
 
             if (this.props.autoPlay) {
-                this.videoPlayer.current.play();
+                // INFO: stop auto play
+                // this.videoPlayer.current.play();
             }
         } else if (state.paused && (state.currentTime !== prev.currentTime || state.seeking !== prev.seeking)) {
             // Video is paused, make sure we are on a key frame, and if we are not, seek to that

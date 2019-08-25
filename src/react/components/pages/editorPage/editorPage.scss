@@ -8,6 +8,10 @@
   overflow: hidden;
   position: relative;
 
+  .regionStyle.selected .anchorStyle {
+    stroke: rgb(7, 189, 143);
+  }
+
   &-sidebar {
     display: flex;
     flex-grow: 1;
@@ -302,7 +306,7 @@ canvas {
 
 .Resizer {
   background: var(--light);
-  opacity: .2;
+  opacity: 0.2;
   z-index: 1;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -351,6 +355,6 @@ canvas {
   border-color: transparent;
 }
 
-.editor-page-right-sidebar{
+.editor-page-right-sidebar {
   width: 430px;
 }

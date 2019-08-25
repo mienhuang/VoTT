@@ -27,6 +27,7 @@ import CanvasHelpers from "./canvasHelpers";
 import "./editorPage.scss";
 import EditorSideBar from "./editorSideBar";
 import { EditorToolbar } from "./editorToolbar";
+import { TopConfigBar } from './topConfigBar';
 import Alert from "../../common/alert/alert";
 import Confirm from "../../common/confirm/confirm";
 import { ActiveLearningService } from "../../../../services/activeLearningService";
@@ -206,10 +207,12 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                     <div className="editor-page-content" onClick={this.onPageClick}>
                         <div className="editor-page-content-main">
                             <div className="editor-page-content-main-header">
-                                <EditorToolbar project={this.props.project}
+                                {/* INFO: hide before tool bar */}
+                                {/* <EditorToolbar project={this.props.project}
                                     items={this.toolbarItems}
                                     actions={this.props.actions}
-                                    onToolbarItemSelected={this.onToolbarItemSelected} />
+                                    onToolbarItemSelected={this.onToolbarItemSelected} /> */}
+                                <TopConfigBar />
                             </div>
                             <div className="editor-page-content-main-body">
                                 {selectedAsset &&
