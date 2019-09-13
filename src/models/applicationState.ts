@@ -16,6 +16,7 @@ export interface IApplicationState {
     recentProjects: IProject[];
     currentProject: IProject;
     appError?: IAppError;
+    customData?: ICustomData;
 }
 
 /**
@@ -88,6 +89,15 @@ export interface IAppSettings {
     securityTokens: ISecurityToken[];
     thumbnailSize?: ISize;
 }
+
+
+
+export interface ICustomData {
+    maxTrackId: number;
+    regions: any,
+    maxTrackIdList: number[]
+}
+
 
 /**
  * @name - Project
@@ -313,6 +323,7 @@ export interface IRegion {
     points?: IPoint[];
     boundingBox?: IBoundingBox;
     faceId?: number;
+    trackId?: number;
 }
 
 /**

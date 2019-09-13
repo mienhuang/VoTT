@@ -12,6 +12,9 @@
     caret-color: #fff;
     color: #aaa;
     font-size: 13px;
+    &:disabled {
+      cursor: not-allowed;
+    }
   }
   button {
     height: 30px;
@@ -20,6 +23,10 @@
     color: #333;
     cursor: pointer;
     font-size: 13px;
+    &:disabled {
+      cursor: not-allowed;
+      background-color: #aaa;
+    }
   }
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {
@@ -53,4 +60,15 @@
       }
     }
   }
+  .tags{
+    margin-left: 10px;
+    overflow: hidden;
+    width: auto;
+    opacity: 0.8;
+    color: #fff;
+    &:hover{
+      opacity: 1;
+    }
+  }
+
 }

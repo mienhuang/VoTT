@@ -16,6 +16,7 @@ const initialState: IApplicationState = {
     recentProjects: [],
     currentProject: null,
     appError: null,
+    customData: { maxTrackId: 0, regions: {}, maxTrackIdList: [0] }
 };
 
 /**

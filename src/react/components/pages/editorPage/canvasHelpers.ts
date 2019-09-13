@@ -131,7 +131,7 @@ export default class CanvasHelpers {
      * Create TagsDescriptor (CanvasTools) from IRegion
      * @param region IRegion from Canvas
      */
-    public static getTagsDescriptor(projectTags: ITag[], region: IRegion): TagsDescriptor {
+    public static getTagsDescriptor(projectTags: ITag[], region: IRegion, trackId?: number): TagsDescriptor {
         if (!projectTags || !projectTags.length) {
             return null;
         }
@@ -140,7 +140,7 @@ export default class CanvasHelpers {
         const tags = region.tags
             .map((tagName) => {
                 const projectTag = projectTags.find((projectTag) => projectTag.name === tagName);
-                return projectTag ? new Tag(projectTag.name, projectTag.color) : null;
+                return projectTag ? new Tag(trackId + '', projectTag.color) : null;
             })
             .filter((tag) => tag !== null);
 

@@ -4,6 +4,7 @@ import _ from "lodash";
 import {
     Player, BigPlayButton, ControlBar, CurrentTimeDisplay,
     TimeDivider, PlaybackRateMenuButton, VolumeMenuButton,
+    FullscreenToggle
 } from "video-react";
 import { IAssetProps } from "./assetPreview";
 import { IAsset, AssetType, AssetState } from "../../../../models/applicationState";
@@ -103,6 +104,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                         <TimeDivider order={1.4} />
                         <PlaybackRateMenuButton rates={[5, 2, 1, 0.5, 0.25]} order={7.1} />
                         <VolumeMenuButton enabled order={7.2} />
+                        <FullscreenToggle disabled />
                         <CustomVideoPlayerButton order={8.1}
                             accelerators={["Q", "q"]}
                             tooltip={strings.editorPage.videoPlayer.previousTaggedFrame.tooltip}
@@ -194,10 +196,12 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
      * project settings for frame rate extraction
      */
     private movePreviousExpectedFrame = () => {
+        console.log('called here.....movePreviousExpectedFrame', this.props, this.state);
         const currentTime = this.getVideoPlayerState().currentTime;
         // Seek backwards from the current time to the next logical frame based on project settings
         const frameSkipTime: number = (1 / this.props.additionalSettings.videoSettings.frameExtractionRate);
         const seekTime: number = (currentTime - frameSkipTime);
+        console.log(seekTime, currentTime, frameSkipTime, '=========')
         this.seekToTime(seekTime);
     }
 
@@ -267,6 +271,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
      * Raises the "childAssetSelected" event if available
      */
     private raiseChildAssetSelected = (state: Readonly<IVideoPlayerState>) => {
+        console.log('raiseChildAssetSelected')
         if (this.props.onChildAssetSelected) {
             const rootAsset = this.props.asset.parent || this.props.asset;
             const childPath = `${rootAsset.path}#t=${state.currentTime}`;
@@ -276,7 +281,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             childAsset.parent = rootAsset;
             childAsset.timestamp = state.currentTime;
             childAsset.size = { ...this.props.asset.size };
-
+            console.log(childAsset, 'childAsset')
             this.props.onChildAssetSelected(childAsset);
         }
     }
@@ -364,7 +369,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
     private renderTimeline = (childAssets: IAsset[], videoDuration: number) => {
         return (
             <div className={"video-timeline-container"}>
-                {childAssets.map((childAsset) => this.renderChildAssetMarker(childAsset, videoDuration))}
+                {/* {childAssets.map((childAsset) => this.renderChildAssetMarker(childAsset, videoDuration))} */}
             </div>
         );
     }

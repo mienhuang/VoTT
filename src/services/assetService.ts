@@ -176,6 +176,21 @@ export class AssetService {
         return metadata;
     }
 
+    // TODO: create another file to store data base on trackID
+    public async saveCustomData(path: string, data: any): Promise<any> {
+        await this.storageProvider.writeText(path, JSON.stringify(data, null, 4));
+        return data;
+    }
+
+    public async readCustomData(path: string): Promise<any> {
+        try {
+            return JSON.parse(await this.storageProvider.readText(path));
+        }
+        catch (err) {
+            return undefined;
+        }
+    }
+
     /**
      * Get metadata for asset
      * @param asset - Asset for which to retrieve metadata
@@ -186,6 +201,7 @@ export class AssetService {
         const fileName = `${asset.id}${constants.assetMetadataFileExtension}`;
         try {
             const json = await this.storageProvider.readText(fileName);
+            console.log('read text from file', JSON.parse(json))
             return JSON.parse(json) as IAssetMetadata;
         } catch (err) {
             if (asset.type === AssetType.TFRecord) {

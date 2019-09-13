@@ -11,10 +11,12 @@ import {
     AssetState, AssetType, EditorMode, IApplicationState,
     IAppSettings, IAsset, IAssetMetadata, IProject, IRegion,
     ISize, ITag, IAdditionalPageSettings, AppError, ErrorCode,
+    ICustomData
 } from "../../../../models/applicationState";
 import { IToolbarItemRegistration, ToolbarItemFactory } from "../../../../providers/toolbar/toolbarItemFactory";
 import IApplicationActions, * as applicationActions from "../../../../redux/actions/applicationActions";
 import IProjectActions, * as projectActions from "../../../../redux/actions/projectActions";
+import ICustomDataActions, * as customDataActions from '../../../../redux/actions/customDataActions';
 import { ToolbarItemName } from "../../../../registerToolbar";
 import { AssetService } from "../../../../services/assetService";
 import { AssetPreview } from "../../common/assetPreview/assetPreview";
@@ -45,7 +47,9 @@ export interface IEditorPageProps extends RouteComponentProps, React.Props<Edito
     recentProjects: IProject[];
     appSettings: IAppSettings;
     actions: IProjectActions;
+    customDataActions?: ICustomDataActions;
     applicationActions: IApplicationActions;
+    customData?: ICustomData;
 }
 
 /**
@@ -79,6 +83,7 @@ export interface IEditorPageState {
     isValid: boolean;
     /** Whether the show invalid region warning alert should display */
     showInvalidRegionWarning: boolean;
+    currentSeletedRegion?: IRegion;
 }
 
 function mapStateToProps(state: IApplicationState) {
@@ -86,6 +91,7 @@ function mapStateToProps(state: IApplicationState) {
         recentProjects: state.recentProjects,
         project: state.currentProject,
         appSettings: state.appSettings,
+        customData: state.customData
     };
 }
 
@@ -93,6 +99,7 @@ function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators(projectActions, dispatch),
         applicationActions: bindActionCreators(applicationActions, dispatch),
+        customDataActions: bindActionCreators(customDataActions, dispatch)
     };
 }
 
@@ -115,9 +122,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         },
         thumbnailSize: this.props.appSettings.thumbnailSize || { width: 175, height: 155 },
         isValid: true,
-        showInvalidRegionWarning: false,
+        showInvalidRegionWarning: false
     };
 
+    private customDataFileName = '';
     private activeLearningService: ActiveLearningService = null;
     private loadingProjectAssets: boolean = false;
     private toolbarItems: IToolbarItemRegistration[] = ToolbarItemFactory.getToolbarItems();
@@ -131,10 +139,24 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             await this.loadProjectAssets();
         } else if (projectId) {
             const project = this.props.recentProjects.find((project) => project.id === projectId);
+            console.log(project, 'ppp')
             await this.props.actions.loadProject(project);
         }
-
         this.activeLearningService = new ActiveLearningService(this.props.project.activeLearningSettings);
+
+
+        const assetService = new AssetService(this.props.project);
+        const lastVisitedAssetId = this.props.project.lastVisitedAssetId;
+        const asset = this.props.project.assets[lastVisitedAssetId];
+        const path = asset.parent ? asset.parent.path : asset.path;
+        const name = path.split('/').pop();
+        this.customDataFileName = `${name}.custom-data.json`;
+        const data = await assetService.readCustomData(this.customDataFileName);
+        if (!data) {
+            assetService.saveCustomData(this.customDataFileName, this.props.customData);
+            return;
+        }
+        this.props.customDataActions.initCustomData(data);
     }
 
     public async componentDidUpdate(prevProps: Readonly<IEditorPageProps>) {
@@ -158,6 +180,48 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             this.updateRootAssets();
         }
     }
+
+    public updateMaxTrackId = (region: IRegion, type: string) => {
+        console.log(region, 'update max track id', this.state.selectedAsset);
+        const { id, name, timestamp, format } = this.state.selectedAsset.asset;
+        const asset = {
+            id,
+            name,
+            timestamp,
+            format
+        }
+        if (type === 'add') {
+            this.props.customDataActions.increase({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
+        } else {
+            this.props.customDataActions.decrease({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
+        }
+    };
+
+    public selectedRegionTrackIdChange = (e) => {
+        const id = Number(e);
+        const selectedRegionId = Number(this.state.selectedRegions[0].trackId);
+        console.log(e, 'iiiidid');
+        console.log(this.state.selectedRegions);
+        console.log(this.canvas.current, '==================================',
+            this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId));
+        const newRegions = [
+            ...(
+                this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId)
+            ),
+            ...(
+                [...this.state.selectedRegions]
+                    .map(region => {
+                        this.updateMaxTrackId(region, 'delete');
+                        const copy = JSON.parse(JSON.stringify(region)) as IRegion;
+                        copy.trackId = id;
+                        this.updateMaxTrackId(copy, 'add');
+                        return copy;
+                    })
+            )
+        ];
+        console.log(newRegions, 'new regions');
+        this.canvas.current.updateAssetRegions(newRegions);
+    };
 
     public render() {
         const { project } = this.props;
@@ -212,7 +276,17 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                     items={this.toolbarItems}
                                     actions={this.props.actions}
                                     onToolbarItemSelected={this.onToolbarItemSelected} /> */}
-                                <TopConfigBar />
+                                <TopConfigBar
+                                    selectedRegionTrackId={this.state.selectedRegions && this.state.selectedRegions[0] ? this.state.selectedRegions[0].trackId + '' : ''}
+                                    selectedRegionTrackIdChange={this.selectedRegionTrackIdChange}
+                                    tags={this.props.project.tags}
+                                    lockedTags={this.state.lockedTags}
+                                    selectedRegions={this.state.selectedRegions}
+                                    onChange={this.onTagsChanged}
+                                    onLockedTagsChange={this.onLockedTagsChanged}
+                                    onTagClick={this.onTagClicked}
+                                    onCtrlTagClick={this.onCtrlTagClicked}
+                                />
                             </div>
                             <div className="editor-page-content-main-body">
                                 {selectedAsset &&
@@ -224,6 +298,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                         onSelectedRegionsChanged={this.onSelectedRegionsChanged}
                                         editorMode={this.state.editorMode}
                                         selectionMode={this.state.selectionMode}
+                                        customData={this.props.customData}
+                                        updateMaxTrackId={this.updateMaxTrackId}
                                         project={this.props.project}
                                         lockedTags={this.state.lockedTags}>
                                         <AssetPreview
@@ -239,7 +315,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                             </div>
                         </div>
                         <div className="editor-page-right-sidebar">
-                            <TagInput
+                            {/* <TagInput
                                 tags={this.props.project.tags}
                                 lockedTags={this.state.lockedTags}
                                 selectedRegions={this.state.selectedRegions}
@@ -249,7 +325,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                 onCtrlTagClick={this.onCtrlTagClicked}
                                 onTagRenamed={this.confirmTagRenamed}
                                 onTagDeleted={this.confirmTagDeleted}
-                            />
+                            /> */}
                         </div>
                         <Confirm title={strings.editorPage.tags.rename.title}
                             ref={this.renameTagConfirm}
@@ -274,9 +350,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     }
 
     private onPageClick = () => {
-        this.setState({
-            selectedRegions: [],
-        });
+        // Current selected regions will be removed by this function
+        // this.setState({
+        //     selectedRegions: [],
+        // });
     }
 
     /**
@@ -309,6 +386,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
      * @param tag Tag clicked
      */
     private onTagClicked = (tag: ITag): void => {
+        console.log(this.canvas, this.canvas.current);
         this.setState({
             selectedTag: tag.name,
             lockedTags: [],
@@ -475,6 +553,13 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const assetService = new AssetService(this.props.project);
         const childAssets = assetService.getChildAssets(rootAsset);
 
+
+        console.log(this.props.customData, 'custom Data....', this.props.project);
+
+
+        assetService.saveCustomData(this.customDataFileName, this.props.customData);
+
+
         // Find and update the root asset in the internal state
         // This forces the root assets that are displayed in the sidebar to
         // accurately show their correct state (not-visited, visited or tagged)
@@ -485,6 +570,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                 ...rootAsset,
             };
         }
+
+        // INFO: childAsset here
+        console.log(childAssets, 'childAssets');
+
 
         this.setState({ childAssets, assets, isValid: true });
     }
@@ -501,6 +590,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     }
 
     private onSelectedRegionsChanged = (selectedRegions: IRegion[]) => {
+        // INFO: create a new region also will trigger here.
+        console.log(selectedRegions, 'selected regions');
         this.setState({ selectedRegions });
     }
 
@@ -593,6 +684,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                 .predictRegions(canvas, this.state.selectedAsset);
 
             await this.onAssetMetadataChanged(updatedAssetMetadata);
+            console.log('predictRegions', 'selectedAsset', updatedAssetMetadata)
             this.setState({ selectedAsset: updatedAssetMetadata });
         } catch (e) {
             throw new AppError(ErrorCode.ActiveLearningPredictionError, "Error predicting regions");
@@ -624,6 +716,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     }
 
     private selectAsset = async (asset: IAsset): Promise<void> => {
+        // INFO: frame change will trigger this function
         // Nothing to do if we are already on the same asset.
         if (this.state.selectedAsset && this.state.selectedAsset.asset.id === asset.id) {
             return;
@@ -635,7 +728,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         }
 
         const assetMetadata = await this.props.actions.loadAssetMetadata(this.props.project, asset);
-
+        console.log(this.props.project, asset, 'assetMetadata', 'selectedAsset');
+        console.log(assetMetadata, 'assetMetadata', 'selectedAsset');
         try {
             if (!assetMetadata.asset.size) {
                 const assetProps = await HtmlFileReader.readAssetAttributes(asset);

@@ -1,8 +1,9 @@
 import { Action } from "redux";
-import { IToggleDevToolsAction,
-         IRefreshApplicationAction,
-         ISaveAppSettingsAction,
-         IEnsureSecurityTokenAction,
+import {
+    IToggleDevToolsAction,
+    IRefreshApplicationAction,
+    ISaveAppSettingsAction,
+    IEnsureSecurityTokenAction,
 } from "./applicationActions";
 import { ActionTypes } from "./actionTypes";
 import {
