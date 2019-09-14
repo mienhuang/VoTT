@@ -47,6 +47,12 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                         key={index}
                         style={{ background: tag.color }}
                         title={tag.name}
+                        disabled={
+                            this.props.selectedRegions ?
+                                this.props.selectedRegions.length === 0
+                                :
+                                true
+                        }
                         onClick={() => this.tagClick(tag)}
                     >{tag.name}[{index + 1}]</button>))
                 }
@@ -83,7 +89,7 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                         }
                         onClick={this.updateRegionTrackId}>更新</button>
                 </div>
-                <div className="action-item" title="当前选择框出现的第一帧">
+                {/* <div className="action-item" title="当前选择框出现的第一帧">
                     <i className="fa fa-angle-double-left"></i>
                 </div>
                 <div className="action-item" title="当前选择框出现的上一帧">
@@ -94,7 +100,7 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                 </div>
                 <div className="action-item" title="当前选择框出现的最后一帧">
                     <i className="fa fa-angle-double-right" aria-hidden="true"></i>
-                </div>
+                </div> */}
                 <div>
                     <span>步长:</span>
                     <input type="number" placeholder="seek step" />
