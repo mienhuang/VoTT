@@ -11,6 +11,7 @@ export default interface ICustomDataActions {
     updateRegion(region): void;
     increase(max): void;
     decrease(max): void;
+    updateCurrentTrackId(ids: {trackId: number, id: string}[]): void;
 }
 
 
@@ -37,6 +38,15 @@ export function initCustomData(customData: ICustomData) {
             payload: region
          });
      }
+ }
+
+ export function updateCurrentTrackId(ids: number[]) {
+     return (dispatch: Dispatch) => {
+        dispatch({
+           type: ActionTypes.UPDATE_CURRENT_TRACK_ID,
+           payload: ids
+        });
+    }
  }
 
 

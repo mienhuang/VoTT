@@ -11,6 +11,8 @@ import { IAsset, AssetType, AssetState } from "../../../../models/applicationSta
 import { AssetService } from "../../../../services/assetService";
 import { CustomVideoPlayerButton } from "../../common/videoPlayer/customVideoPlayerButton";
 import { strings } from "../../../../common/strings";
+import { connect } from "react-redux";
+import { IApplicationState, ICustomData } from '../../../../models/applicationState';
 
 /**
  * VideoAsset component properties
@@ -22,6 +24,7 @@ export interface IVideoAssetProps extends IAssetProps, React.Props<VideoAsset> {
     timestamp?: number;
     /** The event handler that is fired when a child video frame is selected (ex. paused, seeked) */
     onChildAssetSelected?: (asset: IAsset) => void;
+    customData?: ICustomData;
 }
 
 /** VideoAsset internal component state */
@@ -40,9 +43,23 @@ export interface IVideoPlayerState {
     duration: number;
 }
 
+
+
+function mapStateToProps(state: IApplicationState) {
+    return {
+        customData: state.customData
+    };
+}
+
+function mapDispatchToProps(dispatch) {
+    return {
+    };
+}
+
 /**
  * VideoAsset component used to display video based assets
  */
+@connect(mapStateToProps, mapDispatchToProps)
 export class VideoAsset extends React.Component<IVideoAssetProps> {
     /** Default properties for the VideoAsset if not defined */
     public static defaultProps: IVideoAssetProps = {
@@ -106,20 +123,36 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                         <VolumeMenuButton enabled order={7.2} />
                         <FullscreenToggle disabled />
                         <CustomVideoPlayerButton order={8.1}
-                            accelerators={["Q", "q"]}
-                            tooltip={strings.editorPage.videoPlayer.previousTaggedFrame.tooltip}
-                            onClick={this.movePreviousTaggedFrame}
-                            icon={"fas fa-step-backward"}
+                            accelerators={["W", "w"]}
+                            tooltip='第一个关键帧[W]'
+                            onClick={this.moveFirstSameTrackIdFrame}
+                            icon={"fa fa-angle-double-left"}
                         >
-                            <i className="fas fa-step-backward"></i>
+                            <i className="fa fa-angle-double-left"></i>
                         </CustomVideoPlayerButton>
                         <CustomVideoPlayerButton order={8.2}
-                            accelerators={["E", "e"]}
-                            tooltip={strings.editorPage.videoPlayer.nextTaggedFrame.tooltip}
-                            onClick={this.moveNextTaggedFrame}
-                            icon={"fa-step-forward"}
+                            accelerators={["Q", "q"]}
+                            tooltip='上一个关键帧[Q]'
+                            onClick={this.movePreviousSameTrackIdFrame}
+                            icon={"fa fa-angle-left"}
                         >
-                            <i className="fas fa-step-forward"></i>
+                            <i className="fa fa-angle-left"></i>
+                        </CustomVideoPlayerButton>
+                        <CustomVideoPlayerButton order={8.3}
+                            accelerators={["E", "e"]}
+                            tooltip='下一个关键帧[E]'
+                            onClick={this.moveNextSameTrackIdFrame}
+                            icon={"fa fa-angle-right"}
+                        >
+                            <i className="fa fa-angle-right"></i>
+                        </CustomVideoPlayerButton>
+                        <CustomVideoPlayerButton order={8.4}
+                            accelerators={["S", "s"]}
+                            tooltip='最后一个关键帧[S]'
+                            onClick={this.moveLastSameTrackIdFrame}
+                            icon={"fa fa-angle-double-right"}
+                        >
+                            <i className="fa fa-angle-double-right"></i>
                         </CustomVideoPlayerButton>
                     </ControlBar>
                 }
@@ -149,6 +182,75 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             this.seekToTime(this.props.timestamp);
         }
     }
+
+
+    private _sort = (regions: any[]) => regions.sort((a, b) => {
+        const { timestamp: aT } = a.asset;
+        const { timestamp: bT } = b.asset;
+        if (aT < bT) return -1;
+        if (aT > bT) return 1;
+        return 0;
+    });
+
+
+    /**
+     * Move to current selected region first key fream
+     */
+    private moveFirstSameTrackIdFrame = () => {
+        this.move('first');
+    }
+
+    /**
+     * Move to current selected region previous key fream
+     */
+    private movePreviousSameTrackIdFrame = () => {
+        this.move('previous');
+    }
+
+    /**
+     * Move to current selected region next key fream
+     */
+    private moveNextSameTrackIdFrame = () => {
+        this.move('next');
+    }
+
+    /**
+     * Move to current selected region last key fream
+     */
+    private moveLastSameTrackIdFrame = () => {
+        this.move('last');
+    }
+
+    private move(type: string) {
+        if (this.props.customData.currentTrackId.length !== 1) return;
+        const { trackId, id } = this.props.customData.currentTrackId[0];
+        const regions = JSON.parse(JSON.stringify(this.props.customData.regions[trackId]));
+        const sortedRegions = this._sort(regions);
+        const index = sortedRegions.findIndex(region => region.id === id);
+        if (index === -1) return;
+        switch (type) {
+            case 'first':
+                this.seekToTime(sortedRegions[0].asset.timestamp);
+                break;
+            case 'previous':
+                const p = sortedRegions[index - 1];
+                if (!p) return;
+                this.seekToTime(p.asset.timestamp);
+                break;
+            case 'next':
+                const n = sortedRegions[index + 1];
+                if (!n) return;
+                this.seekToTime(n.asset.timestamp);
+                break;
+            case 'last':
+                this.seekToTime([...sortedRegions].pop().asset.timestamp);
+                break;
+            default:
+                break;
+        }
+    }
+
+
 
     /**
      * Bound to the "Previous Tagged Frame" button
@@ -190,6 +292,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         const seekTime: number = (currentTime + frameSkipTime);
         this.seekToTime(seekTime);
     }
+
 
     /**
      * Moves the videos current position backward one frame based on the current

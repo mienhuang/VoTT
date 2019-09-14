@@ -47,7 +47,8 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
         customData: {
             maxTrackId: 0,
             regions: {},
-            maxTrackIdList: [0]
+            maxTrackIdList: [0],
+            currentTrackId: []
         }
     };
 

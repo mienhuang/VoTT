@@ -200,8 +200,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     public selectedRegionTrackIdChange = (e) => {
         const id = Number(e);
         const selectedRegionId = Number(this.state.selectedRegions[0].trackId);
-        console.log(e, 'iiiidid');
         console.log(this.state.selectedRegions);
+        const selectedTrackIds = this.state.selectedRegions.map(region => ({ trackId: region.trackId, id: region.id }));
+        this.props.customDataActions.updateCurrentTrackId([...selectedTrackIds]);
         console.log(this.canvas.current, '==================================',
             this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId));
         const newRegions = [
@@ -592,6 +593,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private onSelectedRegionsChanged = (selectedRegions: IRegion[]) => {
         // INFO: create a new region also will trigger here.
         console.log(selectedRegions, 'selected regions');
+        const ids = selectedRegions.map(region => ({ trackId: region.trackId, id: region.id }));
+        this.props.customDataActions.updateCurrentTrackId([...ids]);
         this.setState({ selectedRegions });
     }
 

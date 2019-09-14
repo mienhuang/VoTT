@@ -94,8 +94,9 @@ export interface IAppSettings {
 
 export interface ICustomData {
     maxTrackId: number;
-    regions: any,
-    maxTrackIdList: number[]
+    regions: any;
+    maxTrackIdList: number[];
+    currentTrackId: { trackId: number, id: string }[];
 }
 
 
