@@ -1,0 +1,16 @@
+.person-info {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  border-left: 1px solid #aaa;
+  .section {
+    width: 320px;
+  }
+  .info-container {
+    flex: 1;
+  }
+  .quick-ways {
+    height: 200px;
+    border-top: 1px solid #aaa;
+  }
+}

@@ -29,6 +29,7 @@ export interface ICanvasProps extends React.Props<Canvas> {
     onAssetMetadataChanged?: (assetMetadata: IAssetMetadata) => void;
     onSelectedRegionsChanged?: (regions: IRegion[]) => void;
     onCanvasRendered?: (canvas: HTMLCanvasElement) => void;
+    onRegionMoved?: (region: IRegion, id: number) => void;
 }
 
 export interface ICanvasState {
@@ -184,9 +185,9 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
 
     public updateMaxtrackId(region: IRegion) {
         const tagLen = region.tags.length;
-        if(tagLen) {
+        if (tagLen) {
             this.props.updateMaxTrackId(region, 'add');
-        }else{
+        } else {
             this.props.updateMaxTrackId(region, 'delete');
         }
     }
@@ -329,7 +330,8 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
             },
             points,
             trackId: this.props.customData.maxTrackId + 1,
-            faceId: -1
+            faceId: -1,
+            keyFrame: true
         };
 
         // this.props.customDataActions.updateRegion(newRegion);
@@ -386,10 +388,12 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
                 left: scaledRegionData.x,
                 top: scaledRegionData.y,
             };
+            movedRegion.keyFrame = true;
         }
 
         currentRegions[movedRegionIndex] = movedRegion;
         this.updateAssetRegions(currentRegions);
+        this.props.onRegionMoved(movedRegion, movedRegion.trackId);
     }
 
     /**
@@ -410,7 +414,9 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
         currentRegions.splice(deletedRegionIndex, 1);
         this.updateAssetRegions(currentRegions);
         if (this.props.onSelectedRegionsChanged) {
-            this.props.onSelectedRegionsChanged([]);
+            // TODO: some unknown reason make selected region not display region manage menu
+            const latest = [...currentRegions].pop();
+            this.props.onSelectedRegionsChanged(latest ? [latest] : []);
         }
     }
 

@@ -15,7 +15,7 @@ const _sort = (data: number[]) => [...data].sort((a, b) => {
 /**
  * Reducer for custom data. Actions handled:
  */
-export const reducer = (state: ICustomData = { maxTrackId: 0, regions: {}, maxTrackIdList: [], currentTrackId: [] }, action: any): any => {
+export const reducer = (state: ICustomData = { maxTrackId: 0, regions: {}, maxTrackIdList: [], currentTrackId: [] }, action: any): ICustomData => {
     const newState = JSON.parse(JSON.stringify(state)) as ICustomData;
     const currentMaxTrackIdList = newState.maxTrackIdList;
     const payload = action.payload;
@@ -42,7 +42,8 @@ export const reducer = (state: ICustomData = { maxTrackId: 0, regions: {}, maxTr
             return {
                 regions: { ...newInRegions },
                 maxTrackId: [...newList].pop(),
-                maxTrackIdList: newList
+                maxTrackIdList: newList,
+                currentTrackId: newState.currentTrackId
             }
         case ActionTypes.DECREASE_MAX_TRACK_ID:
             const deRegions = [...(newState.regions[payload.trackId] || [])];
@@ -63,7 +64,8 @@ export const reducer = (state: ICustomData = { maxTrackId: 0, regions: {}, maxTr
             return {
                 regions: { ...newDeRegions },
                 maxTrackId: [...currentMaxTrackIdList].pop(),
-                maxTrackIdList: [...currentMaxTrackIdList]
+                maxTrackIdList: [...currentMaxTrackIdList],
+                currentTrackId: newState.currentTrackId
             }
 
         default:

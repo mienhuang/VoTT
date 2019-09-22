@@ -11,7 +11,7 @@ import {
     AssetState, AssetType, EditorMode, IApplicationState,
     IAppSettings, IAsset, IAssetMetadata, IProject, IRegion,
     ISize, ITag, IAdditionalPageSettings, AppError, ErrorCode,
-    ICustomData
+    ICustomData, ICustomRegion
 } from "../../../../models/applicationState";
 import { IToolbarItemRegistration, ToolbarItemFactory } from "../../../../providers/toolbar/toolbarItemFactory";
 import IApplicationActions, * as applicationActions from "../../../../redux/actions/applicationActions";
@@ -30,10 +30,12 @@ import "./editorPage.scss";
 import EditorSideBar from "./editorSideBar";
 import { EditorToolbar } from "./editorToolbar";
 import { TopConfigBar } from './topConfigBar';
+import { PersonInfo } from './personInfo';
 import Alert from "../../common/alert/alert";
 import Confirm from "../../common/confirm/confirm";
 import { ActiveLearningService } from "../../../../services/activeLearningService";
 import { toast } from "react-toastify";
+import * as shortid from "shortid";
 
 /**
  * Properties for Editor Page
@@ -132,6 +134,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private canvas: RefObject<Canvas> = React.createRef();
     private renameTagConfirm: React.RefObject<Confirm> = React.createRef();
     private deleteTagConfirm: React.RefObject<Confirm> = React.createRef();
+    private sortedAssets: IAsset[] = [];
 
     public async componentDidMount() {
         const projectId = this.props.match.params["projectId"];
@@ -144,7 +147,33 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         }
         this.activeLearningService = new ActiveLearningService(this.props.project.activeLearningSettings);
 
+        this.saveCustomData();
+        this.initAssets();
 
+        // this.sortedAssets = this.props.project.assets.filter(asset => asset.timestamp!= undefined)
+    }
+
+    private initAssets() {
+        const assets = this.props.project.assets;
+        this.sortedAssets = [];
+        for (let id in assets) {
+            if (assets[id].type === 3) {
+                const asset = assets[id];
+                this.sortedAssets.push(asset);
+            }
+        }
+        this.sortedAssets.sort((a, b) => {
+            if (a.timestamp < b.timestamp) {
+                return -1;
+            }
+            if (a.timestamp > b.timestamp) {
+                return 1;
+            }
+            return 0;
+        });
+    }
+
+    private async saveCustomData() {
         const assetService = new AssetService(this.props.project);
         const lastVisitedAssetId = this.props.project.lastVisitedAssetId;
         const asset = this.props.project.assets[lastVisitedAssetId];
@@ -181,7 +210,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         }
     }
 
-    public updateMaxTrackId = (region: IRegion, type: string) => {
+    public updateMaxTrackId = async (region: IRegion, type: string) => {
         console.log(region, 'update max track id', this.state.selectedAsset);
         const { id, name, timestamp, format } = this.state.selectedAsset.asset;
         const asset = {
@@ -191,9 +220,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             format
         }
         if (type === 'add') {
-            this.props.customDataActions.increase({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
+            await this.props.customDataActions.increase({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
         } else {
-            this.props.customDataActions.decrease({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
+            await this.props.customDataActions.decrease({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
         }
     };
 
@@ -201,28 +230,179 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const id = Number(e);
         const selectedRegionId = Number(this.state.selectedRegions[0].trackId);
         console.log(this.state.selectedRegions);
-        const selectedTrackIds = this.state.selectedRegions.map(region => ({ trackId: region.trackId, id: region.id }));
-        this.props.customDataActions.updateCurrentTrackId([...selectedTrackIds]);
-        console.log(this.canvas.current, '==================================',
-            this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId));
+        // const selectedTrackIds = this.state.selectedRegions.map(region => ({ trackId: region.trackId, id: region.id }));
+        // this.props.customDataActions.updateCurrentTrackId([...selectedTrackIds]);
+        // console.log(this.canvas.current, '==================================',
+        //     this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId));
         const newRegions = [
             ...(
                 this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId)
             ),
             ...(
+                // trackId update only allow 1 selected region
                 [...this.state.selectedRegions]
                     .map(region => {
                         this.updateMaxTrackId(region, 'delete');
                         const copy = JSON.parse(JSON.stringify(region)) as IRegion;
                         copy.trackId = id;
                         this.updateMaxTrackId(copy, 'add');
+                        this.onSelectedRegionsChanged([copy]);
+                        this.updateRegionsBetweenKeyFrames(copy, id);
                         return copy;
                     })
             )
         ];
         console.log(newRegions, 'new regions');
         this.canvas.current.updateAssetRegions(newRegions);
+
     };
+
+
+    public updateRegionsBetweenKeyFrames = (copy: IRegion, id: number) => {
+        this.setState({
+            selectedRegions: [copy]
+        }, () => {
+            this.insertRegions(id, { ...copy, asset: this.canvas.current.state.currentAsset.asset });
+        });
+    }
+
+    private insertRegions = (trackId: number, newRegion: ICustomRegion) => {
+        const trackIdGroup: ICustomRegion[] = [
+            ...this.props.customData.regions[trackId].filter((region: IRegion) => region.id !== newRegion.id),
+            newRegion
+        ];
+        const len = trackIdGroup.length;
+        if (len < 1) {
+            return;
+        }
+        trackIdGroup.sort((a, b) => {
+            if (a.asset.timestamp < b.asset.timestamp) {
+                return -1;
+            }
+            if (a.asset.timestamp > b.asset.timestamp) {
+                return 1;
+            }
+            return 0;
+        });
+
+        const currentAssetId = this.canvas.current.state.currentAsset.asset.id;
+        const index = trackIdGroup.findIndex(region => region.asset.id === currentAssetId);
+
+        const previousCRegion = index === 0 ? undefined : this.findPreviousKeyFrame(index - 1, trackIdGroup);
+        const nextCRegion = index === len - 1 ? undefined : this.findNextKeyFrame(index + 1, trackIdGroup, len);
+
+        const currentRegion = this.state.selectedRegions[0];
+        if (previousCRegion) {
+            const pIndex = this.sortedAssets.findIndex(asset => asset.id === previousCRegion.asset.id);
+            if (pIndex !== -1) {
+
+                const pAssets = this.queryAssets(pIndex, 1, currentAssetId);
+                const pLen = pAssets.length;
+                const boxs = this.generateBoxs(previousCRegion.boundingBox, currentRegion.boundingBox, pLen + 1);
+
+                for (let i = 0; i < pLen; i++) {
+                    const id = shortid.generate();
+                    const newRegion = JSON.parse(JSON.stringify(currentRegion)) as IRegion;
+                    newRegion.boundingBox = boxs[i];
+                    newRegion.id = id;
+                    newRegion.keyFrame = false;
+                    newRegion.points = this.generatePoints(boxs[i]);
+                    this.updateAssetsRegion(pAssets[i], newRegion);
+                }
+            }
+        }
+
+        if (nextCRegion) {
+            const nIndex = this.sortedAssets.findIndex(asset => asset.id === nextCRegion.asset.id);
+            if (nIndex !== -1) {
+                const nAssets = this.queryAssets(nIndex, -1, currentAssetId);
+                const nLen = nAssets.length;
+                const boxs = this.generateBoxs(nextCRegion.boundingBox, currentRegion.boundingBox, nLen + 1);
+                for(let i = 0; i< nLen; i++ ) {
+                    const id = shortid.generate();
+                    const newRegion = JSON.parse(JSON.stringify(currentRegion)) as IRegion;
+                    newRegion.boundingBox = boxs[i];
+                    newRegion.id = id;
+                    newRegion.keyFrame = false;
+                    newRegion.points = this.generatePoints(boxs[i]);
+                    this.updateAssetsRegion(nAssets[i], newRegion);
+                }
+            }
+        }
+    }
+
+    private generatePoints = (boundingBox: { height: number, left: number, top: number, width: number }): { x: number, y: number }[] => {
+        return [
+            { x: boundingBox.left, y: boundingBox.top },
+            { x: boundingBox.left + boundingBox.width, y: boundingBox.top },
+            { x: boundingBox.left + boundingBox.width, y: boundingBox.top + boundingBox.height },
+            { x: boundingBox.left, y: boundingBox.top + boundingBox.height }
+        ]
+    }
+
+    private generateBoxs = (
+        startBoundingBox: { height: number, left: number, top: number, width: number },
+        endBoundingBox: { height: number, left: number, top: number, width: number },
+        steps: number
+    ): { height: number, left: number, top: number, width: number }[] => {
+        const xStep = (endBoundingBox.left - startBoundingBox.left) / steps;
+        const yStep = (endBoundingBox.top - startBoundingBox.top) / steps;
+        const hStep = (endBoundingBox.height - startBoundingBox.height) / steps;
+        const wStep = (endBoundingBox.width - startBoundingBox.width) / steps;
+        let boxs = [];
+        for (let i = 1; i < steps; i++) {
+            boxs.push({
+                height: startBoundingBox.height + hStep * i,
+                width: startBoundingBox.width + wStep * i,
+                left: startBoundingBox.left + xStep * i,
+                top: startBoundingBox.top + yStep * i
+            });
+        }
+        return boxs;
+    }
+
+    private queryAssets = (start: number, step: number, stop: string): IAsset[] => {
+        let assets: IAsset[] = [];
+        let notFindAll = true;
+        let index = start;
+        while (notFindAll) {
+            const asset = this.sortedAssets[index + step];
+            if (asset.id === stop) {
+                notFindAll = false;
+            } else {
+                assets.push(asset);
+                index += step;
+            }
+        }
+
+        return assets;
+    }
+
+    private findPreviousKeyFrame = (index: number, regions: ICustomRegion[]): ICustomRegion => {
+        return this.findKeyFrame(index, -1, regions, -1);
+    }
+
+    private findNextKeyFrame = (index: number, regions: ICustomRegion[], len: number): ICustomRegion => {
+        return this.findKeyFrame(index, 1, regions, len);
+    }
+
+    private findKeyFrame = (start: number, step: number, regions: ICustomRegion[], stop: number): ICustomRegion => {
+        let i = start;
+        let notFind = true;
+        let cRegion: ICustomRegion;
+        while (notFind) {
+            if (regions[i].keyFrame) {
+                cRegion = regions[i];
+                notFind = false;
+            }
+            i += step;
+            if (i === stop) {
+                notFind = false;
+            }
+        }
+        return cRegion;
+    }
+
 
     public render() {
         const { project } = this.props;
@@ -295,6 +475,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                         ref={this.canvas}
                                         selectedAsset={this.state.selectedAsset}
                                         onAssetMetadataChanged={this.onAssetMetadataChanged}
+                                        onRegionMoved={this.updateRegionsBetweenKeyFrames}
                                         onCanvasRendered={this.onCanvasRendered}
                                         onSelectedRegionsChanged={this.onSelectedRegionsChanged}
                                         editorMode={this.state.editorMode}
@@ -327,6 +508,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                 onTagRenamed={this.confirmTagRenamed}
                                 onTagDeleted={this.confirmTagDeleted}
                             /> */}
+                            <PersonInfo />
                         </div>
                         <Confirm title={strings.editorPage.tags.rename.title}
                             ref={this.renameTagConfirm}
@@ -555,7 +737,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const childAssets = assetService.getChildAssets(rootAsset);
 
 
-        console.log(this.props.customData, 'custom Data....', this.props.project);
+        console.log(this.props.customData, childAssets, 'custom Data....', this.props.project);
 
 
         assetService.saveCustomData(this.customDataFileName, this.props.customData);
@@ -577,6 +759,18 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
 
 
         this.setState({ childAssets, assets, isValid: true });
+    }
+
+    private updateAssetsRegion = async (asset: IAsset, region: IRegion): Promise<void> => {
+
+        const assetService = new AssetService(this.props.project);
+        const data = await assetService.getAssetMetadata(asset);
+        const { regions } = data;
+        const removeSame = regions.filter(r => r.trackId !== region.trackId);
+        this.onAssetMetadataChanged({
+            ...data,
+            regions: [...removeSame, region]
+        });
     }
 
     /**

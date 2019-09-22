@@ -106,7 +106,12 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                     <input type="number" placeholder="seek step" />
                 </div>
                 <div title="人员信息搜索">
-                    <input className="searchInput" type="number" placeholder="track ID" />
+                    <input 
+                    className="searchInput" 
+                    type="number" 
+                    placeholder="track ID"
+                    defaultValue={this.props.selectedRegionTrackId}
+                    />
                     <button>搜索</button>
                 </div>
             </div>

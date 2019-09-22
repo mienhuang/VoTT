@@ -325,6 +325,19 @@ export interface IRegion {
     boundingBox?: IBoundingBox;
     faceId?: number;
     trackId?: number;
+    keyFrame?: boolean;
+}
+
+export interface ICustomRegion {
+    asset: IAsset;
+    id: string;
+    type: RegionType;
+    tags: string[];
+    points?: IPoint[];
+    boundingBox?: IBoundingBox;
+    faceId?: number;
+    trackId?: number;
+    keyFrame?: boolean;
 }
 
 /**

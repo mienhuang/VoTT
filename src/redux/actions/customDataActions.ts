@@ -9,8 +9,8 @@ import {
 export default interface ICustomDataActions {
     initCustomData(customData: ICustomData): void;
     updateRegion(region): void;
-    increase(max): void;
-    decrease(max): void;
+    increase(max): Promise<void>;
+    decrease(max): Promise<void>;
     updateCurrentTrackId(ids: {trackId: number, id: string}[]): void;
 }
 
@@ -50,21 +50,23 @@ export function initCustomData(customData: ICustomData) {
  }
 
 
- export function increase(max: number) {
+ export function increase(max: number): (dispatch: Dispatch) => Promise<void> {
      return (dispatch: Dispatch) => {
          dispatch({
              type: ActionTypes.INCREASE_MAX_TRACK_ID,
              payload: max
          });
+         return Promise.resolve();
      }
  }
 
- export function decrease(max: number) {
+ export function decrease(max: number): (dispatch: Dispatch) => Promise<void> {
     return (dispatch: Dispatch) => {
         dispatch({
             type: ActionTypes.DECREASE_MAX_TRACK_ID,
             payload: max
         });
+        return Promise.resolve();
     }
 }
 
