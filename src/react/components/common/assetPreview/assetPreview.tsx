@@ -30,6 +30,7 @@ export interface IAssetProps {
     /** Event handler that fires when the asset has been loaded */
     onLoaded?: (ContentSource: ContentSource) => void;
     /** Event handler that fires when the asset has been activated (ex. Video resumes playing) */
+    onVideoStateChange?: (state: string) => void;
     onActivated?: (contentSource: ContentSource) => void;
     /** Event handler that fires when the asset has been deactivated (ex. Canvas tools takes over) */
     onDeactivated?: (contentSource: ContentSource) => void;
@@ -158,6 +159,7 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
                     autoPlay={autoPlay}
                     onLoaded={this.onAssetLoad}
                     onError={this.onError}
+                    onVideoStateChange={this.onVideoStateChange}
                     onBeforeAssetChanged={this.props.onBeforeAssetChanged}
                     onChildAssetSelected={this.onChildAssetSelected}
                     onActivated={this.props.onActivated}
@@ -171,6 +173,10 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
             default:
                 return <div className="asset-error">{strings.editorPage.assetError}</div>;
         }
+    }
+
+    private onVideoStateChange = (state: string) => {
+        this.props.onVideoStateChange(state);
     }
 
     /**

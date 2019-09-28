@@ -114,6 +114,9 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                     />
                     <button>搜索</button>
                 </div>
+                <div title="删除所有">
+                    <button className="delete-all">删除所有</button>
+                </div>
             </div>
         );
     }

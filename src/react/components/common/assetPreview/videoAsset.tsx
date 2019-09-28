@@ -336,6 +336,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             // Video initial load complete
             this.raiseLoaded();
             this.raiseActivated();
+            this.videoStateChange('loaded');
 
             if (this.props.autoPlay) {
                 // INFO: stop auto play
@@ -347,11 +348,17 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             if (this.isValidKeyFrame()) {
                 this.raiseChildAssetSelected(state);
                 this.raiseDeactivated();
+                this.videoStateChange('pause');
             }
         } else if (!state.paused && state.paused !== prev.paused) {
             // Video has resumed playing
             this.raiseActivated();
+            this.videoStateChange('play');
         }
+    }
+
+    private videoStateChange = (state: string) => {
+        this.props.onVideoStateChange(state);
     }
 
     /**

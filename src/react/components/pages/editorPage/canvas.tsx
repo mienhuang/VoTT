@@ -455,13 +455,22 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
             onError: this.onAssetError,
             onActivated: this.onAssetActivated,
             onDeactivated: this.onAssetDeactivated,
+            onVideoStateChange: this.onVideoStateChange
         });
+    }
+
+    public onVideoStateChange = (state: string) => {
+        console.log(state, 'state...');
+        // this.setState({
+        //     enabled: state !== 'loaded'
+        // });
     }
 
     /**
      * Raised when the asset bound to the asset preview has changed
      */
     private onAssetChanged = () => {
+        console.log(' onAssetChanged asset change');
         this.setState({ enabled: false });
     }
 
@@ -474,6 +483,7 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
     }
 
     private onAssetError = () => {
+        console.log(' onAssetError asset change');
         this.setState({
             enabled: false,
         });
@@ -483,6 +493,7 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
      * Raised when the asset is taking control over the rendering
      */
     private onAssetActivated = () => {
+        console.log(' onAssetActivated asset change');
         this.setState({ enabled: false });
     }
 
@@ -490,6 +501,7 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
      * Raise when the asset is handing off control of rendering
      */
     private onAssetDeactivated = (contentSource: ContentSource) => {
+        console.log(' onAssetDeactivated asset change');
         this.setState({
             contentSource,
             enabled: true,

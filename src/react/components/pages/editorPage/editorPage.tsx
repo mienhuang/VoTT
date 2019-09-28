@@ -210,15 +210,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         }
     }
 
-    public updateMaxTrackId = async (region: IRegion, type: string) => {
+    public updateMaxTrackId = async (region: IRegion, type: string, asset: IAsset = this.state.selectedAsset.asset) => {
         console.log(region, 'update max track id', this.state.selectedAsset);
-        const { id, name, timestamp, format } = this.state.selectedAsset.asset;
-        const asset = {
-            id,
-            name,
-            timestamp,
-            format
-        }
         if (type === 'add') {
             await this.props.customDataActions.increase({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
         } else {
@@ -318,7 +311,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                 const nAssets = this.queryAssets(nIndex, -1, currentAssetId);
                 const nLen = nAssets.length;
                 const boxs = this.generateBoxs(nextCRegion.boundingBox, currentRegion.boundingBox, nLen + 1);
-                for(let i = 0; i< nLen; i++ ) {
+                for (let i = 0; i < nLen; i++) {
                     const id = shortid.generate();
                     const newRegion = JSON.parse(JSON.stringify(currentRegion)) as IRegion;
                     newRegion.boundingBox = boxs[i];
@@ -367,6 +360,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         let index = start;
         while (notFindAll) {
             const asset = this.sortedAssets[index + step];
+            if(!asset) return;
             if (asset.id === stop) {
                 notFindAll = false;
             } else {
@@ -766,7 +760,14 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const assetService = new AssetService(this.props.project);
         const data = await assetService.getAssetMetadata(asset);
         const { regions } = data;
-        const removeSame = regions.filter(r => r.trackId !== region.trackId);
+        const remove = [...regions].filter(r => r.trackId === region.trackId);
+        if (remove.length !== 0) {
+            remove.forEach(r => {
+                this.updateMaxTrackId(r, 'delete');
+            });
+        }
+        this.updateMaxTrackId(region, 'add', asset);
+        const removeSame = [...regions].filter(r => r.trackId !== region.trackId);
         this.onAssetMetadataChanged({
             ...data,
             regions: [...removeSame, region]

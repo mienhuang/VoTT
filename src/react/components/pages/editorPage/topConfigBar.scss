@@ -23,9 +23,17 @@
     color: #333;
     cursor: pointer;
     font-size: 13px;
+    transition: all 1s;
     &:disabled {
       cursor: not-allowed;
       background-color: #aaa;
+    }
+    &.delete-all {
+      width: 80px;
+    }
+    &:hover{
+      background-color: #666;
+      color: #fff;
     }
   }
   input::-webkit-outer-spin-button,
