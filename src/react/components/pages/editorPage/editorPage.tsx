@@ -678,6 +678,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                             ref={this.videoAsset}
                                             additionalSettings={this.state.additionalSettings}
                                             autoPlay={true}
+                                            customData={this._customData}
                                             stepValue={this._stepValue}
                                             controlsEnabled={this.state.isValid}
                                             onBeforeAssetChanged={this.onBeforeAssetSelected}

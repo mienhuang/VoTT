@@ -192,7 +192,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                         <CurrentTimeDisplay order={1.5} />
                         <TimeDivider order={1.6} />
                         <PlaybackRateMenuButton rates={[5, 2, 1, 0.5, 0.25]} order={7.1} />
-                        <VolumeMenuButton enabled order={7.2} />
+                        <VolumeMenuButton vertical enabled order={7.2} />
                         <FullscreenToggle disabled />
                         <CustomVideoPlayerButton order={8.1}
                             accelerators={["W", "w"]}
@@ -295,32 +295,50 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
     }
 
     private move(type: string) {
-        // if (this.props.customData.currentTrackId.length !== 1) return;
-        // const { trackId, id } = this.props.customData.currentTrackId[0];
-        // const regions = JSON.parse(JSON.stringify(this.props.customData.regions[trackId]));
-        // const sortedRegions = this._sort(regions);
-        // const index = sortedRegions.findIndex(region => region.id === id);
-        // if (index === -1) return;
-        // switch (type) {
-        //     case 'first':
-        //         this.seekToTime(sortedRegions[0].asset.timestamp);
-        //         break;
-        //     case 'previous':
-        //         const p = sortedRegions[index - 1];
-        //         if (!p) return;
-        //         this.seekToTime(p.asset.timestamp);
-        //         break;
-        //     case 'next':
-        //         const n = sortedRegions[index + 1];
-        //         if (!n) return;
-        //         this.seekToTime(n.asset.timestamp);
-        //         break;
-        //     case 'last':
-        //         this.seekToTime([...sortedRegions].pop().asset.timestamp);
-        //         break;
-        //     default:
-        //         break;
-        // }
+        if (this.props.customData.currentTrackId.length !== 1) return;
+        const { trackId, id } = this.props.customData.currentTrackId[0];
+        const regions = JSON.parse(JSON.stringify(this.props.customData.regions[trackId]));
+        const sortedRegions = regions.sort((a, b) => {
+            if (a.frameIndex < b.frameIndex) return -1;
+            if (a.frameIndex > b.frameIndex) return 1;
+            return 0;
+        });
+        const index = sortedRegions.findIndex(region => region.id === id);
+        if (index === -1) return;
+        const frameSkipTime: number = (1 / this.props.additionalSettings.videoSettings.frameExtractionRate);
+        switch (type) {
+            case 'first':
+                this.seekToTime((sortedRegions[0].frameIndex - 1) * frameSkipTime);
+                break;
+            case 'previous':
+                const p = this.findPrevious(sortedRegions, index);
+                if (!p) return;
+                this.seekToTime((p.frameIndex - 1) * frameSkipTime);
+                break;
+            case 'next':
+                const n = this.findNext(sortedRegions, index);
+                if (!n) return;
+                this.seekToTime((n.frameIndex - 1) * frameSkipTime);
+                break;
+            case 'last':
+                this.seekToTime(([...sortedRegions].pop().frameIndex - 1) * frameSkipTime);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private findPrevious = (regions, index) => {
+        if (regions[index - 1].keyFrame) {
+            return regions[index - 1];
+        }
+        return this.findPrevious(regions, index - 1);
+    }
+    private findNext = (regions, index) => {
+        if (regions[index + 1].keyFrame) {
+            return regions[index + 1];
+        }
+        return this.findNext(regions, index + 1);
     }
 
 

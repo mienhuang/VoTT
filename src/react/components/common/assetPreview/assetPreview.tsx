@@ -1,5 +1,5 @@
 import React, { SyntheticEvent, RefObject } from "react";
-import { IAsset, AssetType, IProjectVideoSettings } from "../../../../models/applicationState";
+import { IAsset, AssetType, IProjectVideoSettings, ICustomData } from "../../../../models/applicationState";
 import { strings } from "../../../../common/strings";
 import { ImageAsset } from "./imageAsset";
 import { VideoAsset } from "./videoAsset";
@@ -27,6 +27,7 @@ export interface IAssetProps {
     additionalSettings?: IAssetPreviewSettings;
     /** Specifies whether the asset controls are enabled */
     controlsEnabled?: boolean;
+    customData?: ICustomData;
     /** Event handler that fires when the asset has been loaded */
     onLoaded?: (ContentSource: ContentSource) => void;
     /** Event handler that fires when the asset has been activated (ex. Video resumes playing) */
@@ -174,6 +175,7 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
                     controlsEnabled={this.props.controlsEnabled}
                     additionalSettings={this.props.additionalSettings}
                     childAssets={childAssets}
+                    customData={this.props.customData}
                     timestamp={asset.timestamp}
                     autoPlay={autoPlay}
                     stepValue={this.props.stepValue}
