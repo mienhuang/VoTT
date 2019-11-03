@@ -17,6 +17,7 @@ export interface IApplicationState {
     currentProject: IProject;
     appError?: IAppError;
     customData?: ICustomData;
+    frameData?: IFrameData;
 }
 
 /**
@@ -90,6 +91,15 @@ export interface IAppSettings {
     thumbnailSize?: ISize;
 }
 
+export interface IFrameData {
+    frames: any,
+    framerate: string,
+    inputTags: string,
+    suggestiontype: string,
+    scd: boolean,
+    visitedFrames: number[],
+    tag_colors: string[]
+}
 
 
 export interface ICustomData {
@@ -326,10 +336,12 @@ export interface IRegion {
     faceId?: number;
     trackId?: number;
     keyFrame?: boolean;
+    frameIndex?: number;
 }
 
 export interface ICustomRegion {
-    asset: IAsset;
+    asset?: IAsset;
+    frameIndex?: number;
     id: string;
     type: RegionType;
     tags: string[];

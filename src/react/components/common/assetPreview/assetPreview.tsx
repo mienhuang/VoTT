@@ -1,4 +1,4 @@
-import React, { SyntheticEvent } from "react";
+import React, { SyntheticEvent, RefObject } from "react";
 import { IAsset, AssetType, IProjectVideoSettings } from "../../../../models/applicationState";
 import { strings } from "../../../../common/strings";
 import { ImageAsset } from "./imageAsset";
@@ -50,6 +50,8 @@ export interface IAssetProps {
  */
 export interface IAssetPreviewProps extends IAssetProps, React.Props<AssetPreview> {
     autoPlay?: boolean;
+    playerStateChange?: (currentTime: number) => void;
+    stepValue?: number;
 }
 
 /**
@@ -80,13 +82,24 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
         childAssets: [],
         autoPlay: false,
         controlsEnabled: true,
+        stepValue: 1
     };
+    private videoAsset: RefObject<VideoAsset> = React.createRef();
+    private playerState: any;
 
     /** The internal state for the component */
     public state: IAssetPreviewState = {
         loaded: false,
         hasError: false,
     };
+
+    public getCurrentTime = (): number => {
+        console.log(this.videoAsset, '11111111')
+        if (!this.videoAsset.current.getCurrentTime) return 0;
+        return this.videoAsset.current.getCurrentTime();
+        // if(!this.videoAsset) {
+        // }
+    }
 
     public componentDidUpdate(prevProps: Readonly<IAssetPreviewProps>) {
         if (this.props.asset.id !== prevProps.asset.id) {
@@ -137,10 +150,14 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
         );
     }
 
+    private playerStateChange = (currentTime: number) => {
+        this.props.playerStateChange(currentTime);
+        // this.playerState = state;
+    }
+
     private renderAsset = () => {
         const { asset, childAssets, autoPlay } = this.props;
         const rootAsset = asset.parent || asset;
-
         switch (asset.type) {
             case AssetType.Image:
                 return <ImageAsset asset={rootAsset}
@@ -152,11 +169,14 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
             case AssetType.Video:
             case AssetType.VideoFrame:
                 return <VideoAsset asset={rootAsset}
+                    ref={this.videoAsset}
+                    playerStateChange={this.playerStateChange}
                     controlsEnabled={this.props.controlsEnabled}
                     additionalSettings={this.props.additionalSettings}
                     childAssets={childAssets}
                     timestamp={asset.timestamp}
                     autoPlay={autoPlay}
+                    stepValue={this.props.stepValue}
                     onLoaded={this.onAssetLoad}
                     onError={this.onError}
                     onVideoStateChange={this.onVideoStateChange}

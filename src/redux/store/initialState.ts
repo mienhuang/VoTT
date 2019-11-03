@@ -16,8 +16,10 @@ const initialState: IApplicationState = {
     recentProjects: [],
     currentProject: null,
     appError: null,
-    customData: { maxTrackId: 0, regions: {}, maxTrackIdList: [0], currentTrackId: [] }
+    customData: { maxTrackId: 0, regions: {}, maxTrackIdList: [0], currentTrackId: [] },
+    frameData: { frames: {}, framerate: '', inputTags: '', suggestiontype: '', scd: false, visitedFrames: [], tag_colors: [] }
 };
+
 
 /**
  * Instance of initial application state

@@ -220,9 +220,8 @@
     z-index: 1;
   }
 
-  &.canvas-disabled {
-    visibility: hidden;
-    z-index: 0;
+  #editor-zone canvas {
+    display: none !important;
   }
 }
 

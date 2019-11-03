@@ -1,16 +1,55 @@
 .person-info {
-  display: flex;
-  flex-direction: column;
   width: 320px;
   border-left: 1px solid #aaa;
+  display: flex;
+  flex-direction: column;
   .section {
     width: 320px;
   }
   .info-container {
     flex: 1;
+    text-align: center;
+    overflow: auto;
   }
   .quick-ways {
     height: 200px;
     border-top: 1px solid #aaa;
+  }
+  .card-item {
+    width: 154px;
+    padding: 10px;
+    display: inline-block;
+    position: relative;
+    margin-bottom: 20px;
+    cursor: pointer;
+    .user-image {
+      flex: 1;
+      border: 1px solid #fff;
+      margin-bottom: -1px;
+      height: 180px;
+      position: relative;
+      overflow: hidden;
+      .similar-rate {
+        font-size: 16px;
+      }
+      &:hover {
+        border-color: rgb(41, 200, 51);
+      }
+      .name-id {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+      .face-id {
+        font-size: 10px;
+        background: #eaeaea;
+        color: #000;
+      }
+    }
+    .user-image:hover ~ .user-info {
+      height: auto;
+      z-index: 2;
+    }
   }
 }

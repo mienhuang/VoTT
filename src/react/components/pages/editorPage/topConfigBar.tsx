@@ -22,6 +22,8 @@ export interface ITopConfigBarProps {
     onLockedTagsChange: (e) => void;
     onTagClick: (e) => void;
     onCtrlTagClick: (e) => void;
+    onDeleteAllClick?: () => void;
+    onStepChange: (e) => void;
 }
 
 /**
@@ -38,6 +40,34 @@ export interface ITopConfigBarState {
 export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfigBarState> {
 
     private _selectedRegionTrackId = 0;
+    private _currentStepValue = 1;
+    public state = {
+        stepValue: 2
+    }
+    componentDidMount() {
+        window.addEventListener('keyup', (e) => {
+            console.log(e)
+            e.preventDefault();
+            switch (e.code) {
+                case 'ArrowUp':
+                    this.setState({
+                        stepValue: Math.min(16, this.state.stepValue * 2)
+                    }, () => {
+                        this.props.onStepChange(this.state.stepValue)
+                    });
+                    break;
+                case 'ArrowDown':
+                    this.setState({
+                        stepValue: Math.max(1, this.state.stepValue / 2)
+                    }, () => {
+                        this.props.onStepChange(this.state.stepValue)
+                    });
+                    break;
+                default:
+                    break;
+            }
+        })
+    }
     public render() {
         return (
             <div className="top-config" role="toolbar">
@@ -101,30 +131,56 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                 <div className="action-item" title="当前选择框出现的最后一帧">
                     <i className="fa fa-angle-double-right" aria-hidden="true"></i>
                 </div> */}
-                <div>
+                <div className="step-info" title="按上下箭头调整大小">
                     <span>步长:</span>
-                    <input type="number" placeholder="seek step" />
+                    <span className="value">{this.state.stepValue}</span>
                 </div>
                 <div title="人员信息搜索">
-                    <input 
-                    className="searchInput" 
-                    type="number" 
-                    placeholder="track ID"
-                    defaultValue={this.props.selectedRegionTrackId}
+                    <input
+                        className="searchInput"
+                        type="number"
+                        placeholder="track ID"
+                        defaultValue={this.props.selectedRegionTrackId}
                     />
-                    <button>搜索</button>
+                    <button
+                        disabled={
+                            this.props.selectedRegions ?
+                                (
+                                    this.props.selectedRegions.length === 1 ?
+                                        this.props.selectedRegions[0].tags.length === 0
+                                        :
+                                        true
+                                )
+                                :
+                                true
+                        }
+                    >搜索</button>
                 </div>
                 <div title="删除所有">
-                    <button className="delete-all">删除所有</button>
+                    <button className="delete-all"
+                        disabled={
+                            this.props.selectedRegions ?
+                                (
+                                    this.props.selectedRegions.length === 1 ?
+                                        this.props.selectedRegions[0].tags.length === 0
+                                        :
+                                        true
+                                )
+                                :
+                                true
+                        }
+                        onClick={this.deleteAll} >删除所有</button>
                 </div>
             </div>
         );
     }
 
+    private deleteAll = () => {
+        this.props.onDeleteAllClick();
+    }
 
     private selectedRegionTrackIdChange = (event) => {
         event.persist();
-        console.log(event, '1111111111');
         this._selectedRegionTrackId = event.target.value;
     }
 

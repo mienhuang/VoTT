@@ -11,12 +11,13 @@ import {
     AssetState, AssetType, EditorMode, IApplicationState,
     IAppSettings, IAsset, IAssetMetadata, IProject, IRegion,
     ISize, ITag, IAdditionalPageSettings, AppError, ErrorCode,
-    ICustomData, ICustomRegion
+    ICustomData, IFrameData
 } from "../../../../models/applicationState";
 import { IToolbarItemRegistration, ToolbarItemFactory } from "../../../../providers/toolbar/toolbarItemFactory";
 import IApplicationActions, * as applicationActions from "../../../../redux/actions/applicationActions";
 import IProjectActions, * as projectActions from "../../../../redux/actions/projectActions";
 import ICustomDataActions, * as customDataActions from '../../../../redux/actions/customDataActions';
+import IFrameDataActions, * as frameDataActions from '../../../../redux/actions/frameDataActions';
 import { ToolbarItemName } from "../../../../registerToolbar";
 import { AssetService } from "../../../../services/assetService";
 import { AssetPreview } from "../../common/assetPreview/assetPreview";
@@ -51,7 +52,9 @@ export interface IEditorPageProps extends RouteComponentProps, React.Props<Edito
     actions: IProjectActions;
     customDataActions?: ICustomDataActions;
     applicationActions: IApplicationActions;
+    frameDataActions?: IFrameDataActions;
     customData?: ICustomData;
+    frameData?: IFrameData;
 }
 
 /**
@@ -86,6 +89,7 @@ export interface IEditorPageState {
     /** Whether the show invalid region warning alert should display */
     showInvalidRegionWarning: boolean;
     currentSeletedRegion?: IRegion;
+    frameIndex?: number;
 }
 
 function mapStateToProps(state: IApplicationState) {
@@ -93,7 +97,8 @@ function mapStateToProps(state: IApplicationState) {
         recentProjects: state.recentProjects,
         project: state.currentProject,
         appSettings: state.appSettings,
-        customData: state.customData
+        customData: state.customData,
+        frameData: state.frameData
     };
 }
 
@@ -101,7 +106,8 @@ function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators(projectActions, dispatch),
         applicationActions: bindActionCreators(applicationActions, dispatch),
-        customDataActions: bindActionCreators(customDataActions, dispatch)
+        customDataActions: bindActionCreators(customDataActions, dispatch),
+        frameDataActions: bindActionCreators(frameDataActions, dispatch)
     };
 }
 
@@ -124,14 +130,29 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         },
         thumbnailSize: this.props.appSettings.thumbnailSize || { width: 175, height: 155 },
         isValid: true,
-        showInvalidRegionWarning: false
+        showInvalidRegionWarning: false,
+        frameIndex: 1
     };
 
     private customDataFileName = '';
+    private frameDataFileName = '';
+    private _frames = {};
+    private _frameData = {};
+    private _customData: ICustomData = {
+        maxTrackId: 0,
+        regions: [],
+        maxTrackIdList: [0],
+        currentTrackId: []
+    };
+    private timeStep: number = 0;
+    private _stepValue = 1;
     private activeLearningService: ActiveLearningService = null;
     private loadingProjectAssets: boolean = false;
     private toolbarItems: IToolbarItemRegistration[] = ToolbarItemFactory.getToolbarItems();
     private canvas: RefObject<Canvas> = React.createRef();
+    private videoAsset: RefObject<AssetPreview> = React.createRef();
+    private playerState: any;
+    private videoStartTime: number = 0;
     private renameTagConfirm: React.RefObject<Confirm> = React.createRef();
     private deleteTagConfirm: React.RefObject<Confirm> = React.createRef();
     private sortedAssets: IAsset[] = [];
@@ -142,19 +163,45 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             await this.loadProjectAssets();
         } else if (projectId) {
             const project = this.props.recentProjects.find((project) => project.id === projectId);
-            console.log(project, 'ppp')
+            //console.log(project, 'ppp')
             await this.props.actions.loadProject(project);
         }
         this.activeLearningService = new ActiveLearningService(this.props.project.activeLearningSettings);
 
-        this.saveCustomData();
+        this.initCustomData();
         this.initAssets();
+        this.timeStep = this.getTimeStep();
 
         // this.sortedAssets = this.props.project.assets.filter(asset => asset.timestamp!= undefined)
     }
 
+    private getFrameIndex(): number {
+        if (!this.playerState) return -1;
+        const currentTime = this.playerState.currentTime;
+        // const currentTime = this.videoAsset.current
+        const frameExtractionRate = this.props.project.videoSettings.frameExtractionRate;
+        return Math.ceil((currentTime - this.videoStartTime) * frameExtractionRate) + 1;
+    }
+
+    private playerStateChange = (currentTime: number) => {
+        // this.playerState = state;
+        const frameExtractionRate = this.props.project.videoSettings.frameExtractionRate;
+        const index = Math.ceil((currentTime - this.videoStartTime) * frameExtractionRate) + 1;
+        //console.log('state player change in editor....', index);
+        this.setState({
+            frameIndex: index
+        });
+    }
+
+    private getTimeStep(): number {
+        if (!this.props.project) return;
+        const frameExtractionRate = this.props.project.videoSettings.frameExtractionRate;
+        return (1 / frameExtractionRate);
+    }
+
     private initAssets() {
         const assets = this.props.project.assets;
+        //console.log('this addtional settting.....', this.props.project)
         this.sortedAssets = [];
         for (let id in assets) {
             if (assets[id].type === 3) {
@@ -171,21 +218,46 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             }
             return 0;
         });
+        //console.log(this.sortedAssets, 'sorted assets')
     }
 
-    private async saveCustomData() {
+    private async initCustomData() {
+        //console.log(this.props.project, 'ppppp')
         const assetService = new AssetService(this.props.project);
+        // TODO BUG: first time create a project lastVisitedAssetId not exist
         const lastVisitedAssetId = this.props.project.lastVisitedAssetId;
         const asset = this.props.project.assets[lastVisitedAssetId];
         const path = asset.parent ? asset.parent.path : asset.path;
         const name = path.split('/').pop();
         this.customDataFileName = `${name}.custom-data.json`;
-        const data = await assetService.readCustomData(this.customDataFileName);
-        if (!data) {
-            assetService.saveCustomData(this.customDataFileName, this.props.customData);
-            return;
+        this.frameDataFileName = `${name}.frame-data.json`;
+        const customData = await assetService.readCustomData(this.customDataFileName) as ICustomData;
+        const frameData = await assetService.readCustomData(this.frameDataFileName) as IFrameData;
+        if (!customData) {
+            assetService.saveCustomData(this.customDataFileName, this._customData);
+        } else {
+            this._customData = customData;
+            // this.props.customDataActions.initCustomData(customData);
         }
-        this.props.customDataActions.initCustomData(data);
+        //console.log(frameData, 'custom data')
+        if (!frameData) {
+            const tags = this.props.project.tags;
+            const newFrameData = {
+                frames: {},
+                framerate: this.props.project.videoSettings.frameExtractionRate + '',
+                inputTags: tags.map(tag => tag.name).join(','),
+                suggestiontype: '',
+                scd: false,
+                visitedFrames: [],
+                tag_colors: tags.map(tag => tag.color)
+            };
+            assetService.saveCustomData(this.frameDataFileName, newFrameData);
+            this._frameData = newFrameData;
+        } else {
+            this._frameData = frameData;
+            this._frames = frameData.frames;
+            // this.props.frameDataActions.initFrameData(frameData);
+        }
     }
 
     public async componentDidUpdate(prevProps: Readonly<IEditorPageProps>) {
@@ -203,50 +275,147 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                     activeLearningSettings: (this.props.project) ? this.props.project.activeLearningSettings : null,
                 },
             });
+
         }
 
         if (this.props.project && prevProps.project && this.props.project.tags !== prevProps.project.tags) {
             this.updateRootAssets();
         }
+
+        if (!this.timeStep && this.props.project) {
+            this.timeStep = this.getTimeStep();
+        }
     }
 
-    public updateMaxTrackId = async (region: IRegion, type: string, asset: IAsset = this.state.selectedAsset.asset) => {
-        console.log(region, 'update max track id', this.state.selectedAsset);
+    public updateMaxTrackId = async (region: IRegion, type: string) => {
+        //console.log(region, 'update max track id', this.state.selectedAsset);
         if (type === 'add') {
-            await this.props.customDataActions.increase({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
+            // region.frameIndex = region.frameIndex ? region.frameIndex : this.getFrameIndex();
+            this._customDataIncrease({ trackId: region.trackId, id: region.id, region: { ...region } });
+            this.addRegionToFrames(region);
         } else {
-            await this.props.customDataActions.decrease({ trackId: region.trackId, id: region.id, region: { ...region, asset } });
+            this._customDataDecrease({ trackId: region.trackId, id: region.id, region: { ...region } });
+            this.removeRegionFromFrames(region);
         }
+        this.canvas.current.refreshCanvasToolsRegions();
     };
+
+    private _customDataDecrease(newData) {
+        const newState = this._customData as ICustomData;
+        const currentMaxTrackIdList = newState.maxTrackIdList;
+        const payload = newData;
+        const deRegions = [...(newState.regions[payload.trackId] || [])];
+        const deIndex = deRegions.findIndex((region) => {
+            return region.id === payload.id;
+        });
+        const newDeRegions = { ...newState.regions };
+        if (deIndex !== -1) {
+            deRegions.splice(deIndex, 1);
+        }
+        newDeRegions[payload.trackId] = [...deRegions];
+        if (deRegions.length === 0) {
+            const listIndex = [...currentMaxTrackIdList].findIndex((id: number) => id === payload.trackId);
+            if (listIndex != -1) {
+                currentMaxTrackIdList.splice(listIndex, 1);
+            }
+        }
+        return {
+            regions: { ...newDeRegions },
+            maxTrackId: [...currentMaxTrackIdList].pop(),
+            maxTrackIdList: [...currentMaxTrackIdList],
+            currentTrackId: newState.currentTrackId
+        }
+    }
+
+    private _customDataIncrease(newData) {
+        //console.log('called');
+        const newState = this._customData as ICustomData;
+        const currentMaxTrackIdList = newState.maxTrackIdList;
+        const payload = newData;
+        const inRegions = newState.regions[payload.trackId] || [];
+        const inIndex = inRegions.findIndex((region) => {
+            return region.id === payload.id;
+        });
+        const newInRegions = { ...newState.regions };
+        if (inIndex !== -1) {
+            inRegions.splice(inIndex, 1);
+        }
+        newInRegions[payload.trackId] = [...inRegions, payload.region];
+        const removeSame = new Set([...currentMaxTrackIdList, Number(payload.trackId)])
+        const newList = [...removeSame].sort((a, b) => {
+            if (a < b) {
+                return -1;
+            }
+            if (a > b) {
+                return 1;
+            }
+            return 0;
+        });
+        this._customData = {
+            regions: { ...newInRegions },
+            maxTrackId: [...newList].pop(),
+            maxTrackIdList: newList,
+            currentTrackId: newState.currentTrackId
+        };
+    }
+
+
+    public removeRegionFromFrames(region: IRegion) {
+        const frameIndex = region.frameIndex;
+        if (frameIndex === -1) return;
+        const regions = this._frames[frameIndex + ''] as IRegion[] || [];
+        const removeSame = regions.filter(r => r.id !== region.id);
+        this._frames[frameIndex + ''] = [...removeSame];
+        // this.props.frameDataActions.updateFrames(this._frames);
+    }
+
+    public addRegionToFrames(region: IRegion) {
+        const frameIndex = region.frameIndex;
+        if (frameIndex === -1) return;
+        const regions = this._frames[frameIndex + ''] as IRegion[];
+        const removeSame = regions ? regions.filter(r => r.id !== region.id) : [];
+        this._frames[frameIndex + ''] = [...removeSame, region];
+        //console.log('callllll')
+        // this.props.frameDataActions.updateFrames(this._frames);
+    }
 
     public selectedRegionTrackIdChange = (e) => {
         const id = Number(e);
-        const selectedRegionId = Number(this.state.selectedRegions[0].trackId);
-        console.log(this.state.selectedRegions);
+        // const selectedRegionId = Number(this.state.selectedRegions[0].trackId);
+        const region = this.state.selectedRegions[0];
+        this.updateMaxTrackId(region, 'delete');
+        const copy = JSON.parse(JSON.stringify(region)) as IRegion;
+        copy.trackId = id;
+        this.updateMaxTrackId(copy, 'add');
+        this.onSelectedRegionsChanged([copy]);
+        this.updateRegionsBetweenKeyFrames(copy, id);
+
+
+        //console.log(this.state.selectedRegions);
         // const selectedTrackIds = this.state.selectedRegions.map(region => ({ trackId: region.trackId, id: region.id }));
         // this.props.customDataActions.updateCurrentTrackId([...selectedTrackIds]);
-        // console.log(this.canvas.current, '==================================',
+        // //console.log(this.canvas.current, '==================================',
         //     this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId));
-        const newRegions = [
-            ...(
-                this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId)
-            ),
-            ...(
-                // trackId update only allow 1 selected region
-                [...this.state.selectedRegions]
-                    .map(region => {
-                        this.updateMaxTrackId(region, 'delete');
-                        const copy = JSON.parse(JSON.stringify(region)) as IRegion;
-                        copy.trackId = id;
-                        this.updateMaxTrackId(copy, 'add');
-                        this.onSelectedRegionsChanged([copy]);
-                        this.updateRegionsBetweenKeyFrames(copy, id);
-                        return copy;
-                    })
-            )
-        ];
-        console.log(newRegions, 'new regions');
-        this.canvas.current.updateAssetRegions(newRegions);
+        // const newRegions = [
+        //     ...(
+        //         this.canvas.current.state.currentAsset.regions.filter(region => region.trackId !== selectedRegionId)
+        //     ),
+        //     ...(
+        //         // trackId update only allow 1 selected region
+        //         [...this.state.selectedRegions]
+        //             .map(region => {
+        //                 this.updateMaxTrackId(region, 'delete');
+        //                 const copy = JSON.parse(JSON.stringify(region)) as IRegion;
+        //                 copy.trackId = id;
+        //                 this.updateMaxTrackId(copy, 'add');
+        //                 this.onSelectedRegionsChanged([copy]);
+        //                 this.updateRegionsBetweenKeyFrames(copy, id);
+        //                 return copy;
+        //             })
+        //     )
+        // ];
+        //console.log(newRegions, 'new regions');
+        // this.canvas.current.updateAssetRegions(newRegions);
 
     };
 
@@ -255,13 +424,14 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         this.setState({
             selectedRegions: [copy]
         }, () => {
-            this.insertRegions(id, { ...copy, asset: this.canvas.current.state.currentAsset.asset });
+            this.insertRegions(id, { ...copy });
         });
     }
 
-    private insertRegions = (trackId: number, newRegion: ICustomRegion) => {
-        const trackIdGroup: ICustomRegion[] = [
-            ...this.props.customData.regions[trackId].filter((region: IRegion) => region.id !== newRegion.id),
+    private insertRegions = (trackId: number, newRegion: IRegion) => {
+        //console.log('called, custom');
+        const trackIdGroup: IRegion[] = [
+            ...this._customData.regions[trackId].filter((region: IRegion) => region.id !== newRegion.id),
             newRegion
         ];
         const len = trackIdGroup.length;
@@ -269,56 +439,61 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             return;
         }
         trackIdGroup.sort((a, b) => {
-            if (a.asset.timestamp < b.asset.timestamp) {
+            if (a.frameIndex < b.frameIndex) {
                 return -1;
             }
-            if (a.asset.timestamp > b.asset.timestamp) {
+            if (a.frameIndex > b.frameIndex) {
                 return 1;
             }
             return 0;
         });
-
-        const currentAssetId = this.canvas.current.state.currentAsset.asset.id;
-        const index = trackIdGroup.findIndex(region => region.asset.id === currentAssetId);
-
+        //console.log('called, custom', trackIdGroup);
+        // const currentAssetId = this.canvas.current.state.currentAsset.asset.id;
+        const index = trackIdGroup.findIndex(region => region.frameIndex === newRegion.frameIndex);
+        const frameIndex = newRegion.frameIndex;
         const previousCRegion = index === 0 ? undefined : this.findPreviousKeyFrame(index - 1, trackIdGroup);
         const nextCRegion = index === len - 1 ? undefined : this.findNextKeyFrame(index + 1, trackIdGroup, len);
 
         const currentRegion = this.state.selectedRegions[0];
         if (previousCRegion) {
-            const pIndex = this.sortedAssets.findIndex(asset => asset.id === previousCRegion.asset.id);
-            if (pIndex !== -1) {
+            const pIndex = previousCRegion.frameIndex;
+            //console.log(pIndex, frameIndex, 'custom indexs');
+            if (pIndex) {
+                const pDistance = frameIndex - pIndex - 1;
+                // const pAssets = this.queryAssets(pIndex, 1, currentAssetId);
+                // //console.log(pAssets, 'ppppppppaaaa');
+                // const pLen = pAssets.length;
+                const boxs = this.generateBoxs(previousCRegion.boundingBox, currentRegion.boundingBox, pDistance + 1);
 
-                const pAssets = this.queryAssets(pIndex, 1, currentAssetId);
-                const pLen = pAssets.length;
-                const boxs = this.generateBoxs(previousCRegion.boundingBox, currentRegion.boundingBox, pLen + 1);
-
-                for (let i = 0; i < pLen; i++) {
+                for (let i = 0; i < pDistance; i++) {
                     const id = shortid.generate();
                     const newRegion = JSON.parse(JSON.stringify(currentRegion)) as IRegion;
                     newRegion.boundingBox = boxs[i];
                     newRegion.id = id;
                     newRegion.keyFrame = false;
+                    newRegion.frameIndex = pIndex + i + 1;
                     newRegion.points = this.generatePoints(boxs[i]);
-                    this.updateAssetsRegion(pAssets[i], newRegion);
+                    this.updateFrameRegion(newRegion);
                 }
             }
         }
 
         if (nextCRegion) {
-            const nIndex = this.sortedAssets.findIndex(asset => asset.id === nextCRegion.asset.id);
-            if (nIndex !== -1) {
-                const nAssets = this.queryAssets(nIndex, -1, currentAssetId);
-                const nLen = nAssets.length;
-                const boxs = this.generateBoxs(nextCRegion.boundingBox, currentRegion.boundingBox, nLen + 1);
-                for (let i = 0; i < nLen; i++) {
+            const nIndex = nextCRegion.frameIndex;
+            if (nIndex) {
+                const nDistance = nIndex - frameIndex - 1;
+                // const nAssets = this.queryAssets(nIndex, -1, currentAssetId);
+                // const nLen = nAssets.length;
+                const boxs = this.generateBoxs(nextCRegion.boundingBox, currentRegion.boundingBox, nDistance + 1);
+                for (let i = 0; i < nDistance; i++) {
                     const id = shortid.generate();
                     const newRegion = JSON.parse(JSON.stringify(currentRegion)) as IRegion;
                     newRegion.boundingBox = boxs[i];
                     newRegion.id = id;
                     newRegion.keyFrame = false;
+                    newRegion.frameIndex = nIndex - i - 1;
                     newRegion.points = this.generatePoints(boxs[i]);
-                    this.updateAssetsRegion(nAssets[i], newRegion);
+                    this.updateFrameRegion(newRegion);
                 }
             }
         }
@@ -360,7 +535,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         let index = start;
         while (notFindAll) {
             const asset = this.sortedAssets[index + step];
-            if(!asset) return;
+            if (!asset) return;
             if (asset.id === stop) {
                 notFindAll = false;
             } else {
@@ -372,18 +547,18 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         return assets;
     }
 
-    private findPreviousKeyFrame = (index: number, regions: ICustomRegion[]): ICustomRegion => {
+    private findPreviousKeyFrame = (index: number, regions: IRegion[]): IRegion => {
         return this.findKeyFrame(index, -1, regions, -1);
     }
 
-    private findNextKeyFrame = (index: number, regions: ICustomRegion[], len: number): ICustomRegion => {
+    private findNextKeyFrame = (index: number, regions: IRegion[], len: number): IRegion => {
         return this.findKeyFrame(index, 1, regions, len);
     }
 
-    private findKeyFrame = (start: number, step: number, regions: ICustomRegion[], stop: number): ICustomRegion => {
+    private findKeyFrame = (start: number, step: number, regions: IRegion[], stop: number): IRegion => {
         let i = start;
         let notFind = true;
-        let cRegion: ICustomRegion;
+        let cRegion: IRegion;
         while (notFind) {
             if (regions[i].keyFrame) {
                 cRegion = regions[i];
@@ -452,7 +627,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                     actions={this.props.actions}
                                     onToolbarItemSelected={this.onToolbarItemSelected} /> */}
                                 <TopConfigBar
-                                    selectedRegionTrackId={this.state.selectedRegions && this.state.selectedRegions[0] ? this.state.selectedRegions[0].trackId + '' : ''}
+                                    selectedRegionTrackId={
+                                        this.state.selectedRegions && this.state.selectedRegions[0] ? this.state.selectedRegions[0].trackId + '' : ''}
                                     selectedRegionTrackIdChange={this.selectedRegionTrackIdChange}
                                     tags={this.props.project.tags}
                                     lockedTags={this.state.lockedTags}
@@ -461,6 +637,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                     onLockedTagsChange={this.onLockedTagsChanged}
                                     onTagClick={this.onTagClicked}
                                     onCtrlTagClick={this.onCtrlTagClicked}
+                                    onDeleteAllClick={this.deleteAllSameTrackId}
+                                    onStepChange={this.onStepChange}
                                 />
                             </div>
                             <div className="editor-page-content-main-body">
@@ -474,17 +652,22 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                         onSelectedRegionsChanged={this.onSelectedRegionsChanged}
                                         editorMode={this.state.editorMode}
                                         selectionMode={this.state.selectionMode}
-                                        customData={this.props.customData}
+                                        customData={this._customData}
                                         updateMaxTrackId={this.updateMaxTrackId}
                                         project={this.props.project}
+                                        frameIndex={this.state.frameIndex}
+                                        frames={this._frames}
                                         lockedTags={this.state.lockedTags}>
                                         <AssetPreview
+                                            ref={this.videoAsset}
                                             additionalSettings={this.state.additionalSettings}
                                             autoPlay={true}
+                                            stepValue={this._stepValue}
                                             controlsEnabled={this.state.isValid}
                                             onBeforeAssetChanged={this.onBeforeAssetSelected}
                                             onChildAssetSelected={this.onChildAssetSelected}
                                             asset={this.state.selectedAsset.asset}
+                                            playerStateChange={this.playerStateChange}
                                             childAssets={this.state.childAssets} />
                                     </Canvas>
                                 }
@@ -533,6 +716,11 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         // });
     }
 
+    private onStepChange = (value) => {
+        console.log(value, 'onStepChange');
+        this._stepValue = value;
+    }
+
     /**
      * Called when the asset side bar is resized
      * @param newWidth The new sidebar width
@@ -563,7 +751,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
      * @param tag Tag clicked
      */
     private onTagClicked = (tag: ITag): void => {
-        console.log(this.canvas, this.canvas.current);
+        //console.log(this.canvas, this.canvas.current);
         this.setState({
             selectedTag: tag.name,
             lockedTags: [],
@@ -684,6 +872,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
      */
     private onAssetMetadataChanged = async (assetMetadata: IAssetMetadata): Promise<void> => {
         // If the asset contains any regions without tags, don't proceed.
+        this.getFrameIndex();
         const regionsWithoutTags = assetMetadata.regions.filter((region) => region.tags.length === 0);
 
         if (regionsWithoutTags.length > 0) {
@@ -731,10 +920,17 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const childAssets = assetService.getChildAssets(rootAsset);
 
 
-        console.log(this.props.customData, childAssets, 'custom Data....', this.props.project);
+        // //console.log(this._customData, this._frames, 'custom Data....', this.props.project);
 
-
-        assetService.saveCustomData(this.customDataFileName, this.props.customData);
+        assetService.saveCustomData(this.customDataFileName, this._customData);
+        if (this._frames && this._frames !== {}) {
+            assetService.saveCustomData(this.frameDataFileName, {
+                ...this._frameData,
+                frames: {
+                    ...this._frames
+                }
+            });
+        }
 
 
         // Find and update the root asset in the internal state
@@ -748,30 +944,28 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
             };
         }
 
-        // INFO: childAsset here
-        console.log(childAssets, 'childAssets');
-
-
         this.setState({ childAssets, assets, isValid: true });
     }
 
-    private updateAssetsRegion = async (asset: IAsset, region: IRegion): Promise<void> => {
+    private updateFrameRegion = async (region: IRegion): Promise<void> => {
 
-        const assetService = new AssetService(this.props.project);
-        const data = await assetService.getAssetMetadata(asset);
-        const { regions } = data;
+        // const assetService = new AssetService(this.props.project);
+        // const data = await assetService.getAssetMetadata(asset);
+        // const { regions } = data;
+        const regions = this._frames[region.frameIndex] || [];
         const remove = [...regions].filter(r => r.trackId === region.trackId);
         if (remove.length !== 0) {
             remove.forEach(r => {
                 this.updateMaxTrackId(r, 'delete');
             });
         }
-        this.updateMaxTrackId(region, 'add', asset);
-        const removeSame = [...regions].filter(r => r.trackId !== region.trackId);
-        this.onAssetMetadataChanged({
-            ...data,
-            regions: [...removeSame, region]
-        });
+        this.updateMaxTrackId(region, 'add');
+        // const removeSame = [...regions].filter(r => r.trackId !== region.trackId);
+        // this._frames[region.frameIndex] = [...removeSame, region];
+        // this.onAssetMetadataChanged({
+        //     ...data,
+        //     regions: [...removeSame, region]
+        // });
     }
 
     /**
@@ -787,9 +981,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
 
     private onSelectedRegionsChanged = (selectedRegions: IRegion[]) => {
         // INFO: create a new region also will trigger here.
-        console.log(selectedRegions, 'selected regions');
+        //console.log(selectedRegions, 'selected regions');
         const ids = selectedRegions.map(region => ({ trackId: region.trackId, id: region.id }));
-        this.props.customDataActions.updateCurrentTrackId([...ids]);
+        this._customData.currentTrackId = [...ids];
+        // this.props.customDataActions.updateCurrentTrackId([...ids]);
         this.setState({ selectedRegions });
     }
 
@@ -882,7 +1077,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                 .predictRegions(canvas, this.state.selectedAsset);
 
             await this.onAssetMetadataChanged(updatedAssetMetadata);
-            console.log('predictRegions', 'selectedAsset', updatedAssetMetadata)
+            //console.log('predictRegions', 'selectedAsset', updatedAssetMetadata)
             this.setState({ selectedAsset: updatedAssetMetadata });
         } catch (e) {
             throw new AppError(ErrorCode.ActiveLearningPredictionError, "Error predicting regions");
@@ -926,8 +1121,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         }
 
         const assetMetadata = await this.props.actions.loadAssetMetadata(this.props.project, asset);
-        console.log(this.props.project, asset, 'assetMetadata', 'selectedAsset');
-        console.log(assetMetadata, 'assetMetadata', 'selectedAsset');
+        //console.log(this.props.project, asset, 'assetMetadata', 'selectedAsset');
+        //console.log(assetMetadata, 'assetMetadata', 'selectedAsset');
         try {
             if (!assetMetadata.asset.size) {
                 const assetProps = await HtmlFileReader.readAssetAttributes(asset);
@@ -990,4 +1185,37 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
 
         this.setState({ assets: updatedAssets });
     }
+
+
+    private deleteAllSameTrackId = () => {
+
+        const deleteItem = this.state.selectedRegions[0];
+        console.log(deleteItem, '')
+        const trackId = deleteItem.trackId;
+        this.deleteRegionFromCustomData(trackId);
+        this.canvas.current.refreshCanvasToolsRegions();
+        console.log(deleteItem, 'delete item..');
+    }
+
+    private deleteRegionFromCustomData = (trackId: number) => {
+        console.log(this._customData, '=====1111')
+        const regions = this._customData.regions;
+        const regionList = regions[trackId];
+        // delete from frames
+        regionList.forEach(region => {
+            const frame = region.frameIndex;
+            this._frames[frame] = this._frames[frame].filter(r => r.trackId !== trackId);
+        });
+
+        regions[trackId] = [];
+        // delete from curstom data
+        const newMaxTrackId = [...this._customData.maxTrackIdList].filter(id => id !== trackId);
+        this._customData = {
+            ...this._customData,
+            regions,
+            maxTrackIdList: newMaxTrackId,
+            maxTrackId: [...newMaxTrackId].pop()
+        }
+    }
+
 }

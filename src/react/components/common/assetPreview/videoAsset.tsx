@@ -4,7 +4,7 @@ import _ from "lodash";
 import {
     Player, BigPlayButton, ControlBar, CurrentTimeDisplay,
     TimeDivider, PlaybackRateMenuButton, VolumeMenuButton,
-    FullscreenToggle
+    FullscreenToggle, PlayToggle, Shortcut, ForwardControl
 } from "video-react";
 import { IAssetProps } from "./assetPreview";
 import { IAsset, AssetType, AssetState } from "../../../../models/applicationState";
@@ -25,6 +25,8 @@ export interface IVideoAssetProps extends IAssetProps, React.Props<VideoAsset> {
     /** The event handler that is fired when a child video frame is selected (ex. paused, seeked) */
     onChildAssetSelected?: (asset: IAsset) => void;
     customData?: ICustomData;
+    playerStateChange?: (currentTime: number) => void;
+    stepValue?: number;
 }
 
 /** VideoAsset internal component state */
@@ -59,7 +61,7 @@ function mapDispatchToProps(dispatch) {
 /**
  * VideoAsset component used to display video based assets
  */
-@connect(mapStateToProps, mapDispatchToProps)
+// @connect(mapStateToProps, mapDispatchToProps)
 export class VideoAsset extends React.Component<IVideoAssetProps> {
     /** Default properties for the VideoAsset if not defined */
     public static defaultProps: IVideoAssetProps = {
@@ -68,14 +70,77 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         timestamp: null,
         asset: null,
         childAssets: [],
+        stepValue: 1
     };
+    private intervelId: NodeJS.Timeout;
 
     public state: IVideoAssetState = {
         loaded: false,
     };
 
-    private videoPlayer: React.RefObject<Player> = React.createRef<Player>();
+    public getCurrentTime = (): number => {
+        const play = this.getVideoPlayerState();
+        return play.currentTime;
+    }
+
+    public videoPlayer: React.RefObject<Player> = React.createRef<Player>();
     private timelineElement: Element = null;
+
+    private onProgress = (e) => {
+        console.log('qqq onProgress', typeof e, console.log(e));
+    }
+
+    private onDuration = (e) => {
+        console.log('qqq onDuration', e)
+    }
+
+    private onPlaying = (e) => {
+        console.log('qqq onPlaying', e);
+        if (this.intervelId) {
+            clearInterval(this.intervelId);
+        }
+        // let prePlayerState = { currentTime: -1 };
+        let currentTime = -1;
+        let _currentTimes = 0;
+        this.intervelId = setInterval(() => {
+            const playerState = this.getVideoPlayerState();
+            const newTime = playerState.currentTime;
+            if (currentTime !== newTime) {
+                this.props.playerStateChange(newTime);
+                currentTime = newTime;
+                _currentTimes = 0;
+            } else {
+                _currentTimes += 1;
+                this.props.playerStateChange(newTime + _currentTimes * 0.01);
+            }
+            //     if (playerState.currentTime != prePlayerState.currentTime) {
+            //     prePlayerState = playerState;
+            // }
+        }, 10);
+    }
+    private newShortcuts = [
+        {
+            keyCode: 37, // left arrow
+            ctrl: false, // Ctrl/Cmd
+            handle: () => { }
+        },
+        {
+            keyCode: 38, // top arrow
+            ctrl: false, // Ctrl/Cmd
+            handle: () => { }
+        },
+        {
+            keyCode: 39, // Right arrow
+            ctrl: false, // Ctrl/Cmd
+            handle: () => { }
+        },
+        {
+            keyCode: 40, // down arrow
+            ctrl: false, // Ctrl/Cmd
+            handle: () => { }
+        }
+    ];
+
 
     public render() {
         const { autoPlay, asset } = this.props;
@@ -92,15 +157,20 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                 autoPlay={false}
                 src={videoPath}
                 onError={this.props.onError}
+                onProgress={this.onProgress}
+                onDurationChange={this.onDuration}
+                onPlaying={this.onPlaying}
                 crossOrigin="anonymous">
                 <BigPlayButton position="center" />
                 {autoPlay &&
-                    <ControlBar autoHide={false}>
+                    <ControlBar autoHide={false} disableDefaultControls={false}>
+                        <Shortcut clickable={true} dblclickable={false} shortcuts={this.newShortcuts} />
                         {!this.props.controlsEnabled &&
                             <Fragment>
                                 <div className="video-react-control-bar-disabled"></div>
                             </Fragment>
                         }
+                        <PlayToggle />
                         <CustomVideoPlayerButton order={1.1}
                             accelerators={["ArrowLeft", "A", "a"]}
                             tooltip={strings.editorPage.videoPlayer.previousExpectedFrame.tooltip}
@@ -117,8 +187,8 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                         >
                             <i className="fas fa-caret-right fa-lg" />
                         </CustomVideoPlayerButton>
-                        <CurrentTimeDisplay order={1.3} />
-                        <TimeDivider order={1.4} />
+                        <CurrentTimeDisplay order={1.5} />
+                        <TimeDivider order={1.6} />
                         <PlaybackRateMenuButton rates={[5, 2, 1, 0.5, 0.25]} order={7.1} />
                         <VolumeMenuButton enabled order={7.2} />
                         <FullscreenToggle disabled />
@@ -174,11 +244,12 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             this.setState({ loaded: false });
         }
 
-        if (this.props.childAssets !== prevProps.childAssets) {
-            this.addAssetTimelineTags(this.props.childAssets, this.getVideoPlayerState().duration);
-        }
+        // if (this.props.childAssets !== prevProps.childAssets) {
+        //     this.addAssetTimelineTags(this.props.childAssets, this.getVideoPlayerState().duration);
+        // }
 
         if (this.props.timestamp !== prevProps.timestamp) {
+            console.log('test find,called here');
             this.seekToTime(this.props.timestamp);
         }
     }
@@ -222,32 +293,32 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
     }
 
     private move(type: string) {
-        if (this.props.customData.currentTrackId.length !== 1) return;
-        const { trackId, id } = this.props.customData.currentTrackId[0];
-        const regions = JSON.parse(JSON.stringify(this.props.customData.regions[trackId]));
-        const sortedRegions = this._sort(regions);
-        const index = sortedRegions.findIndex(region => region.id === id);
-        if (index === -1) return;
-        switch (type) {
-            case 'first':
-                this.seekToTime(sortedRegions[0].asset.timestamp);
-                break;
-            case 'previous':
-                const p = sortedRegions[index - 1];
-                if (!p) return;
-                this.seekToTime(p.asset.timestamp);
-                break;
-            case 'next':
-                const n = sortedRegions[index + 1];
-                if (!n) return;
-                this.seekToTime(n.asset.timestamp);
-                break;
-            case 'last':
-                this.seekToTime([...sortedRegions].pop().asset.timestamp);
-                break;
-            default:
-                break;
-        }
+        // if (this.props.customData.currentTrackId.length !== 1) return;
+        // const { trackId, id } = this.props.customData.currentTrackId[0];
+        // const regions = JSON.parse(JSON.stringify(this.props.customData.regions[trackId]));
+        // const sortedRegions = this._sort(regions);
+        // const index = sortedRegions.findIndex(region => region.id === id);
+        // if (index === -1) return;
+        // switch (type) {
+        //     case 'first':
+        //         this.seekToTime(sortedRegions[0].asset.timestamp);
+        //         break;
+        //     case 'previous':
+        //         const p = sortedRegions[index - 1];
+        //         if (!p) return;
+        //         this.seekToTime(p.asset.timestamp);
+        //         break;
+        //     case 'next':
+        //         const n = sortedRegions[index + 1];
+        //         if (!n) return;
+        //         this.seekToTime(n.asset.timestamp);
+        //         break;
+        //     case 'last':
+        //         this.seekToTime([...sortedRegions].pop().asset.timestamp);
+        //         break;
+        //     default:
+        //         break;
+        // }
     }
 
 
@@ -263,6 +334,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             .find((asset) => asset.state === AssetState.Tagged && asset.timestamp < currentTime);
 
         if (previousFrame) {
+            console.log('test find,called here');
             this.seekToTime(previousFrame.timestamp);
         }
     }
@@ -277,6 +349,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             .find((asset) => asset.state === AssetState.Tagged && asset.timestamp > currentTime);
 
         if (nextFrame) {
+            console.log('test find,called here');
             this.seekToTime(nextFrame.timestamp);
         }
     }
@@ -290,6 +363,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         // Seek forward from the current time to the next logical frame based on project settings
         const frameSkipTime: number = (1 / this.props.additionalSettings.videoSettings.frameExtractionRate);
         const seekTime: number = (currentTime + frameSkipTime);
+        console.log('test find,called here');
         this.seekToTime(seekTime);
     }
 
@@ -305,6 +379,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         const frameSkipTime: number = (1 / this.props.additionalSettings.videoSettings.frameExtractionRate);
         const seekTime: number = (currentTime - frameSkipTime);
         console.log(seekTime, currentTime, frameSkipTime, '=========')
+        console.log('test find,called here');
         this.seekToTime(seekTime);
     }
 
@@ -313,6 +388,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
      * @param seekTime - Time (in seconds) in the video to seek to
      */
     private seekToTime = (seekTime: number) => {
+        console.log(seekTime, 'showme seek time');
         const playerState = this.getVideoPlayerState();
 
         if (seekTime >= 0 && playerState.currentTime !== seekTime) {
@@ -332,6 +408,12 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
     }
 
     private onVideoStateChange = (state: Readonly<IVideoPlayerState>, prev: Readonly<IVideoPlayerState>) => {
+        if (state.paused) {
+            if (this.intervelId) {
+                clearInterval(this.intervelId);
+            }
+        }
+
         if (!this.state.loaded && state.readyState === 4 && state.readyState !== prev.readyState) {
             // Video initial load complete
             this.raiseLoaded();
@@ -349,6 +431,8 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                 this.raiseChildAssetSelected(state);
                 this.raiseDeactivated();
                 this.videoStateChange('pause');
+                const playerState = this.getVideoPlayerState();
+                this.props.playerStateChange(this.getCurrentTime());
             }
         } else if (!state.paused && state.paused !== prev.paused) {
             // Video has resumed playing
@@ -373,7 +457,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             }
 
             // Once the video is loaded, add any asset timeline tags
-            this.addAssetTimelineTags(this.props.childAssets, this.getVideoPlayerState().duration);
+            // this.addAssetTimelineTags(this.props.childAssets, this.getVideoPlayerState().duration);
         });
     }
 
@@ -432,9 +516,13 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         const seekTime = +(numberKeyFrames * keyFrameTime).toFixed(6);
 
         if (seekTime !== timestamp) {
+            console.log('showme called here...keyFrameTime', keyFrameTime)
+            console.log('showme called here...timestamp', timestamp)
+            console.log('showme called here...numberKeyFrames', numberKeyFrames)
+            console.log('showme called here...seekTime', seekTime)
             this.seekToTime(seekTime);
         }
-
+        console.log(timestamp, seekTime, numberKeyFrames, 'seekTime')
         return seekTime === timestamp;
     }
 

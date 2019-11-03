@@ -31,7 +31,7 @@
     &.delete-all {
       width: 80px;
     }
-    &:hover{
+    &:hover {
       background-color: #666;
       color: #fff;
     }
@@ -68,15 +68,21 @@
       }
     }
   }
-  .tags{
+  .tags {
     margin-left: 10px;
     overflow: hidden;
     width: auto;
     opacity: 0.8;
     color: #fff;
-    &:hover{
+    &:hover {
       opacity: 1;
     }
   }
-
+  .step-info {
+    width: 56px;
+    & > .value {
+      font-size: 16px;
+      margin-left: 4px;
+    }
+  }
 }
