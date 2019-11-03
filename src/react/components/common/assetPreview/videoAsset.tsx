@@ -43,6 +43,7 @@ export interface IVideoPlayerState {
     seeking: boolean;
     currentTime: number;
     duration: number;
+    playbackRate: number;
 }
 
 
@@ -105,13 +106,14 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         this.intervelId = setInterval(() => {
             const playerState = this.getVideoPlayerState();
             const newTime = playerState.currentTime;
+            const playbackRate = playerState.playbackRate;
             if (currentTime !== newTime) {
                 this.props.playerStateChange(newTime);
                 currentTime = newTime;
                 _currentTimes = 0;
             } else {
                 _currentTimes += 1;
-                this.props.playerStateChange(newTime + _currentTimes * 0.01);
+                this.props.playerStateChange(newTime + _currentTimes * 0.01 * playbackRate);
             }
             //     if (playerState.currentTime != prePlayerState.currentTime) {
             //     prePlayerState = playerState;
