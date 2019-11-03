@@ -164,9 +164,9 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                 onPlaying={this.onPlaying}
                 crossOrigin="anonymous">
                 <BigPlayButton position="center" />
+                <Shortcut clickable={true} dblclickable={false} shortcuts={this.newShortcuts} />
                 {autoPlay &&
                     <ControlBar autoHide={false} disableDefaultControls={false}>
-                        <Shortcut clickable={true} dblclickable={false} shortcuts={this.newShortcuts} />
                         {!this.props.controlsEnabled &&
                             <Fragment>
                                 <div className="video-react-control-bar-disabled"></div>
@@ -364,7 +364,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         const currentTime = this.getVideoPlayerState().currentTime;
         // Seek forward from the current time to the next logical frame based on project settings
         const frameSkipTime: number = (1 / this.props.additionalSettings.videoSettings.frameExtractionRate);
-        const seekTime: number = (currentTime + frameSkipTime);
+        const seekTime: number = currentTime + (frameSkipTime * this.props.stepValue);
         console.log('test find,called here');
         this.seekToTime(seekTime);
     }
@@ -379,7 +379,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         const currentTime = this.getVideoPlayerState().currentTime;
         // Seek backwards from the current time to the next logical frame based on project settings
         const frameSkipTime: number = (1 / this.props.additionalSettings.videoSettings.frameExtractionRate);
-        const seekTime: number = (currentTime - frameSkipTime);
+        const seekTime: number = currentTime - (frameSkipTime * this.props.stepValue);
         console.log(seekTime, currentTime, frameSkipTime, '=========')
         console.log('test find,called here');
         this.seekToTime(seekTime);
