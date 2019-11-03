@@ -155,6 +155,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private videoStartTime: number = 0;
     private renameTagConfirm: React.RefObject<Confirm> = React.createRef();
     private deleteTagConfirm: React.RefObject<Confirm> = React.createRef();
+    private deleteAllSameConfirm: React.RefObject<Confirm> = React.createRef();
     private sortedAssets: IAsset[] = [];
 
     public async componentDidMount() {
@@ -697,6 +698,11 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                             message={strings.editorPage.tags.delete.confirmation}
                             confirmButtonColor="danger"
                             onConfirm={this.onTagDeleted} />
+                        <Confirm title="删除所有"
+                            ref={this.deleteAllSameConfirm}
+                            message="确认删除所有与当前trackID相同的选择框？"
+                            confirmButtonColor="danger"
+                            onConfirm={this.confrimedDeleteAllSameTrackId} />
                     </div>
                 </SplitPane>
                 <Alert show={this.state.showInvalidRegionWarning}
@@ -763,6 +769,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
      */
     private confirmTagRenamed = (tagName: string, newTagName: string): void => {
         this.renameTagConfirm.current.open(tagName, newTagName);
+    }
+
+    private confirmDeleteAllSame = (): void => {
+        this.deleteAllSameConfirm.current.open();
     }
 
     /**
@@ -1188,7 +1198,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
 
 
     private deleteAllSameTrackId = () => {
+        this.confirmDeleteAllSame();
+    }
 
+    private confrimedDeleteAllSameTrackId = () => {
         const deleteItem = this.state.selectedRegions[0];
         console.log(deleteItem, '')
         const trackId = deleteItem.trackId;
