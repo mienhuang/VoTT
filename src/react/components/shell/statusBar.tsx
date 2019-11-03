@@ -6,7 +6,7 @@ export class StatusBar extends React.Component {
     public render() {
         return (
             <div className="status-bar">
-                <div className="status-bar-main">{this.props.children}</div>
+                {/* <div className="status-bar-main">{this.props.children}</div>
                 <div className="status-bar-version">
                     <ul>
                         <li>
@@ -14,7 +14,7 @@ export class StatusBar extends React.Component {
                             <span>{appInfo.version}</span>
                         </li>
                     </ul>
-                </div>
+                </div> */}
             </div>
         );
     }
