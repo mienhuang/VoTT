@@ -173,6 +173,21 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         this.initAssets();
         this.timeStep = this.getTimeStep();
 
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.keyCode === 83) {
+                const assetService = new AssetService(this.props.project);
+                assetService.saveCustomData(this.customDataFileName, this._customData);
+                if (this._frames && this._frames !== {}) {
+                    assetService.saveCustomData(this.frameDataFileName, {
+                        ...this._frameData,
+                        frames: {
+                            ...this._frames
+                        }
+                    });
+                }
+                toast.success('保存成功！')
+            }
+        })
         // this.sortedAssets = this.props.project.assets.filter(asset => asset.timestamp!= undefined)
     }
 
@@ -320,7 +335,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                 currentMaxTrackIdList.splice(listIndex, 1);
             }
         }
-        return {
+        this._customData = {
             regions: { ...newDeRegions },
             maxTrackId: [...currentMaxTrackIdList].pop(),
             maxTrackIdList: [...currentMaxTrackIdList],
