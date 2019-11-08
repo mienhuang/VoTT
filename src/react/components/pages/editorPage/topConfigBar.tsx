@@ -46,7 +46,6 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
     }
     componentDidMount() {
         window.addEventListener('keyup', (e) => {
-            console.log(e)
             e.preventDefault();
             switch (e.code) {
                 case 'ArrowUp':
@@ -66,7 +65,7 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                 default:
                     break;
             }
-        })
+        });
     }
     public render() {
         return (

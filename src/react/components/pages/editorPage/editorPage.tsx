@@ -899,7 +899,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private onAssetMetadataChanged = async (assetMetadata: IAssetMetadata): Promise<void> => {
         // If the asset contains any regions without tags, don't proceed.
         this.getFrameIndex();
-        const regionsWithoutTags = assetMetadata.regions.filter((region) => region.tags.length === 0);
+        const currentRegions = this._frames[this.state.frameIndex] || [];
+        const regionsWithoutTags = currentRegions.filter((region) => region.tags.length === 0);
 
         if (regionsWithoutTags.length > 0) {
             this.setState({ isValid: false });

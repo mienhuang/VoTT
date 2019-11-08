@@ -122,6 +122,11 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
     }
     private newShortcuts = [
         {
+            keyCode: 32,
+            ctrl: false,
+            handle: () => { }
+        },
+        {
             keyCode: 37, // left arrow
             ctrl: false, // Ctrl/Cmd
             handle: () => { }
@@ -172,7 +177,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
                                 <div className="video-react-control-bar-disabled"></div>
                             </Fragment>
                         }
-                        <PlayToggle />
+                        {/* <PlayToggle /> */}
                         <CustomVideoPlayerButton order={1.1}
                             accelerators={["ArrowLeft", "A", "a"]}
                             tooltip={strings.editorPage.videoPlayer.previousExpectedFrame.tooltip}
@@ -238,6 +243,27 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             // is true, otherwise the video is simply a preview on the side bar that
             // doesn't change
             this.videoPlayer.current.subscribeToStateChange(this.onVideoStateChange);
+        }
+        window.addEventListener('keyup', (e) => {
+            e.preventDefault();
+            switch (e.keyCode) {
+                case 32:
+                    // this.videoPlayer.current.play();
+                    this.toggleVideoStatus()
+                    break;
+                default:
+                    break;
+            }
+        });
+    }
+
+    private toggleVideoStatus = () => {
+        const player = this.getVideoPlayerState();
+        const paused = player.paused;
+        if (paused) {
+            this.videoPlayer.current.play();
+        } else {
+            this.videoPlayer.current.pause();
         }
     }
 
