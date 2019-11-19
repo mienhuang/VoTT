@@ -561,7 +561,10 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         const numberKeyFrames = Math.round(timestamp / keyFrameTime);
         const seekTime = +(numberKeyFrames * keyFrameTime).toFixed(6);
 
-        if (seekTime !== timestamp) {
+        // fix infinity loop
+        const timegap = Math.abs(seekTime - timestamp);
+
+        if (seekTime !== timestamp && timegap >= 0.001) {
             console.log('showme called here...keyFrameTime', keyFrameTime)
             console.log('showme called here...timestamp', timestamp)
             console.log('showme called here...numberKeyFrames', numberKeyFrames)
@@ -569,7 +572,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
             this.seekToTime(seekTime);
         }
         console.log(timestamp, seekTime, numberKeyFrames, 'seekTime')
-        return seekTime === timestamp;
+        return seekTime === timestamp || timegap < 0.001;
     }
 
     /**

@@ -219,9 +219,15 @@
     visibility: visible;
     z-index: 1;
   }
-
-  #editor-zone canvas {
-    display: none !important;
+  .show-canvas {
+    canvas {
+      visibility: visible;
+    }
+  }
+  .hide-canvas {
+    canvas {
+      visibility: hidden;
+    }
   }
 }
 
@@ -356,4 +362,11 @@ canvas {
 
 .editor-page-right-sidebar {
   width: 320px;
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(30, 35, 43);
+}
+#new-canvas {
+  position: absolute;
+  z-index: -1;
 }

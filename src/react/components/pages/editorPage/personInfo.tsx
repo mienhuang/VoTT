@@ -6,6 +6,7 @@ import "./personInfo.scss";
  * 
  */
 export interface IPersonInfoProps {
+    data: any;
 }
 
 /**
@@ -31,6 +32,18 @@ export class PersonInfo extends React.Component<IPersonInfoProps, IPersonInfoSta
         return (
             <div className="person-info">
                 <section className="info-container">
+                    {
+                        this.props.data.map(face => <div className="card-item">
+                        <div className="user-image">
+                            <div className="similar-rate"><span className="bold">{this.state.similarRate}</span></div>
+                            <img src="../../../../public/default.png" alt="" />
+                            <div className="name-id">
+                                <div className="user-name">{this.state.name}</div>
+                                <div className="face-id">{this.state.faceSign}</div>
+                            </div>
+                        </div>
+                    </div>)
+                    }
                     <div className="card-item">
                         <div className="user-image">
                             <div className="similar-rate"><span className="bold">{this.state.similarRate}</span></div>
@@ -52,8 +65,8 @@ export class PersonInfo extends React.Component<IPersonInfoProps, IPersonInfoSta
                         </div>
                     </div>
                 </section>
-                <section className="quick-ways">
-                </section>
+                {/* <section className="quick-ways">
+                </section> */}
             </div>
         );
     }

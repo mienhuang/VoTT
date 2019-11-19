@@ -157,6 +157,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private deleteTagConfirm: React.RefObject<Confirm> = React.createRef();
     private deleteAllSameConfirm: React.RefObject<Confirm> = React.createRef();
     private sortedAssets: IAsset[] = [];
+    private faceData = [];
 
     public async componentDidMount() {
         const projectId = this.props.match.params["projectId"];
@@ -238,7 +239,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     }
 
     private async initCustomData() {
-        //console.log(this.props.project, 'ppppp')
+        console.log(this.props.project, 'this.props.project')
         const assetService = new AssetService(this.props.project);
         // TODO BUG: first time create a project lastVisitedAssetId not exist
         const lastVisitedAssetId = this.props.project.lastVisitedAssetId;
@@ -246,7 +247,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const path = asset.parent ? asset.parent.path : asset.path;
         const name = path.split('/').pop();
         this.customDataFileName = `${name}.custom-data.json`;
-        this.frameDataFileName = `${name}.frame-data.json`;
+        this.frameDataFileName = `${name}.json`;
         const customData = await assetService.readCustomData(this.customDataFileName) as ICustomData;
         const frameData = await assetService.readCustomData(this.frameDataFileName) as IFrameData;
         if (!customData) {
@@ -492,6 +493,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                     this.updateFrameRegion(newRegion);
                 }
             }
+            toast.success('成功绘制到上一关键帧');
         }
 
         if (nextCRegion) {
@@ -512,6 +514,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                     this.updateFrameRegion(newRegion);
                 }
             }
+            toast.success('成功绘制到下一关键帧');
         }
     }
 
@@ -655,6 +658,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                     onCtrlTagClick={this.onCtrlTagClicked}
                                     onDeleteAllClick={this.deleteAllSameTrackId}
                                     onStepChange={this.onStepChange}
+                                    onSearchClick={this.onSearchClick}
                                 />
                             </div>
                             <div className="editor-page-content-main-body">
@@ -673,7 +677,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                         project={this.props.project}
                                         frameIndex={this.state.frameIndex}
                                         frames={this._frames}
-                                        lockedTags={this.state.lockedTags}>
+                                        lockedTags={this.state.lockedTags}
+                                        queryFaceCb={this.queryFaceCb}
+                                    >
                                         <AssetPreview
                                             ref={this.videoAsset}
                                             additionalSettings={this.state.additionalSettings}
@@ -702,7 +708,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                 onTagRenamed={this.confirmTagRenamed}
                                 onTagDeleted={this.confirmTagDeleted}
                             /> */}
-                            <PersonInfo />
+                            <PersonInfo data={this.faceData} />
+                            <canvas id="new-canvas"></canvas>
                         </div>
                         <Confirm title={strings.editorPage.tags.rename.title}
                             ref={this.renameTagConfirm}
@@ -729,6 +736,83 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                     onClose={() => this.setState({ showInvalidRegionWarning: false })} />
             </div>
         );
+    }
+
+    private queryFaceCb = (data) => {
+        console.log(data);
+        const _data = [
+            {
+                "FaceList": {
+                    "FaceObject": [
+                        {
+                            "FaceID": "122323333344444",
+                            "Name": "zd",
+                            "SubImageList": {
+                                "SubImageInfo": {
+                                    "ImageID": "122323333344444",
+                                    "DeviceID": "1111",
+                                    "Type": "11",
+                                    "SubType": "01",
+                                    "FileFormat": "png",
+                                    "Width": "11",
+                                    "Height": "11",
+                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "FaceList": {
+                    "FaceObject": [
+                        {
+                            "FaceID": "122323333344444",
+                            "Name": "zd",
+                            "SubImageList": {
+                                "SubImageInfo": {
+                                    "ImageID": "122323333344444",
+                                    "DeviceID": "1111",
+                                    "Type": "11",
+                                    "SubType": "01",
+                                    "FileFormat": "png",
+                                    "Width": "11",
+                                    "Height": "11",
+                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "FaceList": {
+                    "FaceObject": [
+                        {
+                            "FaceID": "122323333344444",
+                            "Name": "zd",
+                            "SubImageList": {
+                                "SubImageInfo": {
+                                    "ImageID": "122323333344444",
+                                    "DeviceID": "1111",
+                                    "Type": "11",
+                                    "SubType": "01",
+                                    "FileFormat": "png",
+                                    "Width": "11",
+                                    "Height": "11",
+                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+    private onSearchClick = () => {
+        // TODO get image from canvas..
+        this.canvas.current.search(this.state.selectedRegions);
     }
 
     private onPageClick = () => {
@@ -900,12 +984,12 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         // If the asset contains any regions without tags, don't proceed.
         this.getFrameIndex();
         const currentRegions = this._frames[this.state.frameIndex] || [];
-        const regionsWithoutTags = currentRegions.filter((region) => region.tags.length === 0);
+        // const regionsWithoutTags = currentRegions.filter((region) => region.tags.length === 0);
 
-        if (regionsWithoutTags.length > 0) {
-            this.setState({ isValid: false });
-            return;
-        }
+        // if (regionsWithoutTags.length > 0) {
+        //     this.setState({ isValid: false });
+        //     return;
+        // }
 
         const initialState = assetMetadata.asset.state;
 

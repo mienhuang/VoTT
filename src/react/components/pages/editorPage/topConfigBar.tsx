@@ -24,6 +24,7 @@ export interface ITopConfigBarProps {
     onCtrlTagClick: (e) => void;
     onDeleteAllClick?: () => void;
     onStepChange: (e) => void;
+    onSearchClick?: () => void;
 }
 
 /**
@@ -42,7 +43,8 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
     private _selectedRegionTrackId = 0;
     private _currentStepValue = 1;
     public state = {
-        stepValue: 2
+        stepValue: 2,
+        trackId: this.props.selectedRegionTrackId
     }
     componentDidMount() {
         window.addEventListener('keyup', (e) => {
@@ -118,28 +120,17 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                         }
                         onClick={this.updateRegionTrackId}>更新</button>
                 </div>
-                {/* <div className="action-item" title="当前选择框出现的第一帧">
-                    <i className="fa fa-angle-double-left"></i>
-                </div>
-                <div className="action-item" title="当前选择框出现的上一帧">
-                    <i className="fa fa-angle-left"></i>
-                </div>
-                <div className="action-item" title="当前选择框出现的下一帧">
-                    <i className="fa fa-angle-right" aria-hidden="true"></i>
-                </div>
-                <div className="action-item" title="当前选择框出现的最后一帧">
-                    <i className="fa fa-angle-double-right" aria-hidden="true"></i>
-                </div> */}
                 <div className="step-info" title="按上下箭头调整大小">
                     <span>步长:</span>
                     <span className="value">{this.state.stepValue}</span>
                 </div>
                 <div title="人员信息搜索">
                     <input
+                        disabled
                         className="searchInput"
                         type="number"
                         placeholder="track ID"
-                        defaultValue={this.props.selectedRegionTrackId}
+                        value={this.props.selectedRegionTrackId}
                     />
                     <button
                         disabled={
@@ -153,6 +144,7 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                                 :
                                 true
                         }
+                        onClick={this.props.onSearchClick}
                     >搜索</button>
                 </div>
                 <div title="删除所有">
@@ -179,6 +171,7 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
     }
 
     private selectedRegionTrackIdChange = (event) => {
+        console.log(event, '11111')
         event.persist();
         this._selectedRegionTrackId = event.target.value;
     }

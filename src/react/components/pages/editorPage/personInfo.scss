@@ -1,8 +1,8 @@
 .person-info {
   width: 320px;
-  border-left: 1px solid #aaa;
   display: flex;
   flex-direction: column;
+  flex: 1;
   .section {
     width: 320px;
   }

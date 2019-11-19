@@ -16,6 +16,7 @@ import { strings } from "../../../../common/strings";
 import { SelectionMode } from "vott-ct/lib/js/CanvasTools/Interface/ISelectorSettings";
 import { Rect } from "vott-ct/lib/js/CanvasTools/Core/Rect";
 import { createContentBoundingBox } from "../../../../common/layout";
+import fetch, { Headers } from "node-fetch";
 
 export interface ICanvasProps extends React.Props<Canvas> {
     selectedAsset: IAssetMetadata;
@@ -32,12 +33,14 @@ export interface ICanvasProps extends React.Props<Canvas> {
     onRegionMoved?: (region: IRegion, id: number) => void;
     frameIndex?: any;
     frames?: any;
+    queryFaceCb?: (data: any) => void;
 }
 
 export interface ICanvasState {
     currentAsset: IAssetMetadata;
     contentSource: ContentSource;
     enabled: boolean;
+    showCanvas: boolean;
 }
 
 export default class Canvas extends React.Component<ICanvasProps, ICanvasState> {
@@ -61,10 +64,12 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
         currentAsset: this.props.selectedAsset,
         contentSource: null,
         enabled: false,
+        showCanvas: false
     };
 
     private canvasZone: React.RefObject<HTMLDivElement> = React.createRef();
     private clearConfirm: React.RefObject<Confirm> = React.createRef();
+    // private newCanvas: React.RefObject<any> = React.createRef();
 
     private template: Rect = new Rect(20, 20);
 
@@ -80,6 +85,7 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
 
         window.addEventListener("resize", this.onWindowResize);
     }
+    src: string;
 
     public componentWillUnmount() {
         window.removeEventListener("resize", this.onWindowResize);
@@ -137,6 +143,7 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
 
     public render = () => {
         const className = this.state.enabled ? "canvas-enabled" : "canvas-disabled";
+        const showCanvas = this.state.showCanvas ? 'show-canvas' : 'hide-canvas';
 
         return (
             <Fragment>
@@ -147,13 +154,130 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
                     onConfirm={this.removeAllRegions}
                 />
                 <div id="ct-zone" ref={this.canvasZone} className={className} onClick={(e) => e.stopPropagation()}>
-                    <div id="selection-zone">
-                        <div id="editor-zone" className="full-size" />
+                    <div id="selection-zone" className={showCanvas}>
+                        <div id="editor-zone" className='full-size' />
                     </div>
                 </div>
                 {this.renderChildren()}
             </Fragment>
         );
+    }
+
+
+    public search = (selectedRegions) => {
+        console.log(selectedRegions, 'called search..');
+        const { tags, boundingBox: { height, width, left: x, top: y } } = selectedRegions[0];
+        const sourceCanvas = this.canvasZone.current.querySelector("canvas");
+        const newCanvas = document.getElementById('new-canvas') as HTMLCanvasElement;
+        const _h = Math.round(height);
+        const _w = Math.round(width);
+        newCanvas.width = _w;
+        newCanvas.height = _h;
+        newCanvas.style.width = `${_w}px`;
+        newCanvas.style.height = `${_h}px`;
+        const newCtx = newCanvas.getContext('2d');
+        const ctx = sourceCanvas.getContext('2d');
+        var img = ctx.getImageData(x, y, _w, _h);
+        newCtx.clearRect(0, 0, 0, 0);
+        newCtx.putImageData(img, 0, 0);
+
+        const ImageFData = newCanvas.toDataURL("image/jpeg", 1.0).split("data:image/jpeg;base64,")[1];
+
+        const ImageSearchType = tags[0].replace(/\b\w+\b/g, function (word) {
+            return word.substring(0, 1).toUpperCase() + word.substring(1);
+        });
+
+        const url = "http://192.168.88.156:5000/VIAS/ImageSearchedByImagesSync"; // can be changed
+        const data = {
+            "SearchID": Math.random().toString(36).split('.')[1],
+            "MaxNumRecordReturn": 10,
+            "SearchType": ImageSearchType,
+            "TabIDList": "1234567890", // can be changed
+            "Image": { "EventSort": 11, "Data": ImageFData }
+        };
+
+
+        fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: new Headers({
+                'Content-Type': 'application/json;charset=UTF-8'
+            })
+        })
+            .then(res => res.json())
+            .then(() => {
+                return {
+                    "ImageResultSBI": {
+                        "SearchID": "your SearchID",
+                        "ReturnNum": 2,
+                        "TotalNum": 2,
+                        "FaceObjectList": {
+                            "FaceObject": [
+                                {
+                                    "FaceID": "123123",
+                                    "TabID": "00000000000000000000050000001000000000001",
+                                    "Similaritydegree": 0.123
+                                },
+                                {
+                                    "FaceID": "234434",
+                                    "TabID": "00000000000000000000050000001000000000001",
+                                    "Similaritydegree": 0.023
+                                }
+                            ]
+                        }
+                    }
+                };
+            })
+            .then(response => response.ImageResultSBI.FaceObjectList.FaceObject)
+            .then(list => this.queryAllFaceInfo(list))
+            .then(data => this.props.queryFaceCb(data))
+            .catch(error => console.error('Error:', error))
+            .then(response => console.log('Success:', response));
+
+    }
+
+    queryAllFaceInfo = (list: {
+        FaceID: string,
+        TabID: string,
+        Similaritydegree: number
+    }[]) => {
+        return Promise.all(
+            list.map(face => this.getImageById(face.FaceID))
+        )
+    }
+
+    getImageById = (imageId) => {
+        const url = `http://127.0.0.1:8080/VIID/Faces/${imageId}?SubImageType=02`;
+        return fetch(url, {
+            method: 'GET',
+            headers: new Headers({
+                'Content-Type': 'application/json;charset=UTF-8'
+            })
+        })
+            .then(res => res.json())
+            .then(data => ({
+                "FaceList": {
+                    "FaceObject": [
+                        {
+                            "FaceID": "122323333344444",
+                            "Name": "zd",
+                            "SubImageList": {
+                                "SubImageInfo": {
+                                    "ImageID": "122323333344444",
+                                    "DeviceID": "1111",
+                                    "Type": "11",
+                                    "SubType": "01",
+                                    "FileFormat": "png",
+                                    "Width": "11",
+                                    "Height": "11",
+                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }))
+            .then(data => data.FaceList.FaceObject)
     }
 
     /**
@@ -482,10 +606,11 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
     }
 
     public onVideoStateChange = (state: string) => {
-        //console.log(state, 'state...');
-        // this.setState({
-        //     enabled: state !== 'loaded'
-        // });
+        console.log(state, 'cccccc state...');
+        this.setState({
+            enabled: state !== 'loaded',
+            showCanvas: state === 'pause'
+        });
     }
 
     /**
