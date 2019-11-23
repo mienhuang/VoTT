@@ -25,6 +25,7 @@ export interface ITopConfigBarProps {
     onDeleteAllClick?: () => void;
     onStepChange: (e) => void;
     onSearchClick?: () => void;
+    showConfig: () => void;
 }
 
 /**
@@ -161,6 +162,9 @@ export class TopConfigBar extends React.Component<ITopConfigBarProps, ITopConfig
                                 true
                         }
                         onClick={this.deleteAll} >删除所有</button>
+                </div>
+                <div title="设置" className="url-settings" onClick={this.props.showConfig}>
+                    <span className="fa fa-cogs"></span>
                 </div>
             </div>
         );

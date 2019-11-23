@@ -3,7 +3,7 @@ import { AutoSizer, List } from "react-virtualized";
 import { IAsset, AssetState, ISize } from "../../../../models/applicationState";
 import { AssetPreview } from "../../common/assetPreview/assetPreview";
 import { strings } from "../../../../common/strings";
-
+import './editorSideBar.scss';
 /**
  * Properties for Editor Side Bar
  * @member assets - Array of assets to be previewed
@@ -107,22 +107,27 @@ export default class EditorSideBar extends React.Component<IEditorSideBarProps, 
         const selectedAsset = this.props.selectedAsset;
 
         return (
-            <div key={key} style={style}
-                className={this.getAssetCssClassNames(asset, selectedAsset)}
-                onClick={() => this.onAssetClicked(asset)}>
-                <div className="asset-item-image">
-                    {this.renderBadges(asset)}
-                    <AssetPreview asset={asset} />
-                </div>
-                <div className="asset-item-metadata">
-                    <span className="asset-filename" title={asset.name}>{asset.name}</span>
-                    {asset.size &&
-                        <span>
-                            {asset.size.width} x {asset.size.height}
-                        </span>
-                    }
-                </div>
+
+            <div className={this.getAssetCssClassNames(asset, selectedAsset)} key={key} onClick={() => this.onAssetClicked(asset)}>
+                <span>{asset.name}</span>
             </div>
+            // <div key={key} style={style}
+            //     className={this.getAssetCssClassNames(asset, selectedAsset)}
+            //     onClick={() => this.onAssetClicked(asset)}>
+            //     {/* <div className="asset-item-image">
+            //         {this.renderBadges(asset)}
+            //         TODO BUG Disable video and change to text
+            //         <AssetPreview asset={asset} />
+            //     </div> */}
+            //     <div className="asset-item-metadata">
+            //         <span className="asset-filename" title={asset.name}>{asset.name}</span>
+            //         {asset.size &&
+            //             <span>
+            //                 {asset.size.width} x {asset.size.height}
+            //             </span>
+            //         }
+            //     </div>
+            // </div>
         );
     }
 
@@ -148,9 +153,9 @@ export default class EditorSideBar extends React.Component<IEditorSideBarProps, 
     }
 
     private getAssetCssClassNames = (asset: IAsset, selectedAsset: IAsset = null): string => {
-        const cssClasses = ["asset-item"];
+        const cssClasses = ['list-item'];
         if (selectedAsset && selectedAsset.id === asset.id) {
-            cssClasses.push("selected");
+            cssClasses.push("list-selected");
         }
 
         return cssClasses.join(" ");

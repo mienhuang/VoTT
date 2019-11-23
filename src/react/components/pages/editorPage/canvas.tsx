@@ -165,6 +165,8 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
 
 
     public search = (selectedRegions) => {
+        const imgURL = localStorage.getItem('imgURL') || 'http://192.168.88.156:5000';
+        const imgTabIDList = localStorage.getItem('imgTL') || '1234567890';
         console.log(selectedRegions, 'called search..');
         const { tags, boundingBox: { height, width, left: x, top: y } } = selectedRegions[0];
         const sourceCanvas = this.canvasZone.current.querySelector("canvas");
@@ -187,12 +189,12 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
             return word.substring(0, 1).toUpperCase() + word.substring(1);
         });
 
-        const url = "http://192.168.88.156:5000/VIAS/ImageSearchedByImagesSync"; // can be changed
+        const url = `${imgURL}/VIAS/ImageSearchedByImagesSync`; // can be changed
         const data = {
             "SearchID": Math.random().toString(36).split('.')[1],
             "MaxNumRecordReturn": 10,
             "SearchType": ImageSearchType,
-            "TabIDList": "1234567890", // can be changed
+            "TabIDList": imgTabIDList, // can be changed
             "Image": { "EventSort": 11, "Data": ImageFData }
         };
 
@@ -205,29 +207,29 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
             })
         })
             .then(res => res.json())
-            .then(() => {
-                return {
-                    "ImageResultSBI": {
-                        "SearchID": "your SearchID",
-                        "ReturnNum": 2,
-                        "TotalNum": 2,
-                        "FaceObjectList": {
-                            "FaceObject": [
-                                {
-                                    "FaceID": "123123",
-                                    "TabID": "00000000000000000000050000001000000000001",
-                                    "Similaritydegree": 0.123
-                                },
-                                {
-                                    "FaceID": "234434",
-                                    "TabID": "00000000000000000000050000001000000000001",
-                                    "Similaritydegree": 0.023
-                                }
-                            ]
-                        }
-                    }
-                };
-            })
+            // .then(() => {
+            //     return {
+            //         "ImageResultSBI": {
+            //             "SearchID": "your SearchID",
+            //             "ReturnNum": 2,
+            //             "TotalNum": 2,
+            //             "FaceObjectList": {
+            //                 "FaceObject": [
+            //                     {
+            //                         "FaceID": "123123",
+            //                         "TabID": "00000000000000000000050000001000000000001",
+            //                         "Similaritydegree": 0.123
+            //                     },
+            //                     {
+            //                         "FaceID": "234434",
+            //                         "TabID": "00000000000000000000050000001000000000001",
+            //                         "Similaritydegree": 0.023
+            //                     }
+            //                 ]
+            //             }
+            //         }
+            //     };
+            // })
             .then(response => response.ImageResultSBI.FaceObjectList.FaceObject)
             .then(list => this.queryAllFaceInfo(list))
             .then(data => this.props.queryFaceCb(data))
@@ -242,12 +244,15 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
         Similaritydegree: number
     }[]) => {
         return Promise.all(
-            list.map(face => this.getImageById(face.FaceID))
+            list.map(face => this.getImageById(face.FaceID, face.Similaritydegree))
         )
     }
 
-    getImageById = (imageId) => {
-        const url = `http://127.0.0.1:8080/VIID/Faces/${imageId}?SubImageType=02`;
+    getImageById = (imageId, similaritydegree: number) => {
+        const faceURL = localStorage.getItem('faceURL') || 'http://127.0.0.1:8080';
+        const subImageType = localStorage.getItem('subImageType') || '02';
+
+        const url = `${faceURL}/VIID/Faces/${imageId}?SubImageType=${subImageType}`;
         return fetch(url, {
             method: 'GET',
             headers: new Headers({
@@ -255,29 +260,36 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
             })
         })
             .then(res => res.json())
-            .then(data => ({
-                "FaceList": {
-                    "FaceObject": [
-                        {
-                            "FaceID": "122323333344444",
-                            "Name": "zd",
-                            "SubImageList": {
-                                "SubImageInfo": {
-                                    "ImageID": "122323333344444",
-                                    "DeviceID": "1111",
-                                    "Type": "11",
-                                    "SubType": "01",
-                                    "FileFormat": "png",
-                                    "Width": "11",
-                                    "Height": "11",
-                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
-                                }
-                            }
-                        }
-                    ]
+            // .then(data => ({
+            //     "FaceList": {
+            //         "FaceObject": [
+            //             {
+            //                 "FaceID": "122323333344444",
+            //                 "Name": "zd",
+            //                 "SubImageList": {
+            //                     "SubImageInfo": {
+            //                         "ImageID": "122323333344444",
+            //                         "DeviceID": "1111",
+            //                         "Type": "11",
+            //                         "SubType": "01",
+            //                         "FileFormat": "png",
+            //                         "Width": "11",
+            //                         "Height": "11",
+            //                         "StoragePath": "http://127.0.0.1:9333/3,113457777"
+            //                     }
+            //                 }
+            //             }
+            //         ]
+            //     }
+            // }))
+            .then(data => {
+                return {
+                    name: data.FaceList.FaceObject[0].Name,
+                    faceId: data.FaceList.FaceObject[0].FaceID,
+                    path: data.FaceList.FaceObject[0].SubImageList.SubImageInfo.StoragePath,
+                    similaritydegree
                 }
-            }))
-            .then(data => data.FaceList.FaceObject)
+            })
     }
 
     /**

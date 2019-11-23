@@ -2,6 +2,7 @@
   display: flex;
   align-items: center;
   margin: 10px;
+  position: relative;
   input {
     height: 30px;
     width: 80px;
@@ -83,6 +84,21 @@
     & > .value {
       font-size: 16px;
       margin-left: 4px;
+    }
+  }
+  .url-settings {
+    position: absolute;
+    right: 10px;
+    top: 0;
+    bottom: 0;
+    margin: auto 0;
+    span{
+      font-size: 20px;
+      color: #aaa;
+      cursor: pointer;
+      &:hover{
+        color: #fff;
+      }
     }
   }
 }

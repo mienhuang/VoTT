@@ -31,6 +31,7 @@ import "./editorPage.scss";
 import EditorSideBar from "./editorSideBar";
 import { EditorToolbar } from "./editorToolbar";
 import { TopConfigBar } from './topConfigBar';
+import { URLConfig } from './config';
 import { PersonInfo } from './personInfo';
 import Alert from "../../common/alert/alert";
 import Confirm from "../../common/confirm/confirm";
@@ -90,6 +91,7 @@ export interface IEditorPageState {
     showInvalidRegionWarning: boolean;
     currentSeletedRegion?: IRegion;
     frameIndex?: number;
+    showConfig?: boolean;
 }
 
 function mapStateToProps(state: IApplicationState) {
@@ -131,7 +133,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         thumbnailSize: this.props.appSettings.thumbnailSize || { width: 175, height: 155 },
         isValid: true,
         showInvalidRegionWarning: false,
-        frameIndex: 1
+        frameIndex: 1,
+        showConfig: false
     };
 
     private customDataFileName = '';
@@ -157,7 +160,26 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private deleteTagConfirm: React.RefObject<Confirm> = React.createRef();
     private deleteAllSameConfirm: React.RefObject<Confirm> = React.createRef();
     private sortedAssets: IAsset[] = [];
-    private faceData = [];
+    private faceData = [
+        {
+            name: "test1",
+            faceId: 'deahassda',
+            similaritydegree: 0,
+            path: 'aaaa'
+        },
+        {
+            name: 'test2',
+            faceId: 'fghjasda',
+            similaritydegree: 0,
+            path: 'aaaa'
+        },
+        {
+            name: 'test3',
+            faceId: 'yuhiujoas',
+            similaritydegree: 0,
+            path: 'aaaa'
+        }
+    ];
 
     public async componentDidMount() {
         const projectId = this.props.match.params["projectId"];
@@ -243,6 +265,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const assetService = new AssetService(this.props.project);
         // TODO BUG: first time create a project lastVisitedAssetId not exist
         const lastVisitedAssetId = this.props.project.lastVisitedAssetId;
+        if (!lastVisitedAssetId) return;
         const asset = this.props.project.assets[lastVisitedAssetId];
         const path = asset.parent ? asset.parent.path : asset.path;
         const name = path.split('/').pop();
@@ -659,6 +682,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                     onDeleteAllClick={this.deleteAllSameTrackId}
                                     onStepChange={this.onStepChange}
                                     onSearchClick={this.onSearchClick}
+                                    showConfig={this.onConfigShow}
                                 />
                             </div>
                             <div className="editor-page-content-main-body">
@@ -734,80 +758,30 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                     message={strings.editorPage.messages.enforceTaggedRegions.description}
                     closeButtonColor="info"
                     onClose={() => this.setState({ showInvalidRegionWarning: false })} />
+
+                {
+                    this.state.showConfig &&
+                    <URLConfig onCloseConfig={this.onConfigClose} ></URLConfig>
+                }
             </div>
         );
     }
 
+    private onConfigClose = () => {
+        this.setState({
+            showConfig: false
+        });
+    }
+
+    private onConfigShow = () => {
+        this.setState({
+            showConfig: true
+        });
+    }
+
     private queryFaceCb = (data) => {
         console.log(data);
-        const _data = [
-            {
-                "FaceList": {
-                    "FaceObject": [
-                        {
-                            "FaceID": "122323333344444",
-                            "Name": "zd",
-                            "SubImageList": {
-                                "SubImageInfo": {
-                                    "ImageID": "122323333344444",
-                                    "DeviceID": "1111",
-                                    "Type": "11",
-                                    "SubType": "01",
-                                    "FileFormat": "png",
-                                    "Width": "11",
-                                    "Height": "11",
-                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
-                                }
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                "FaceList": {
-                    "FaceObject": [
-                        {
-                            "FaceID": "122323333344444",
-                            "Name": "zd",
-                            "SubImageList": {
-                                "SubImageInfo": {
-                                    "ImageID": "122323333344444",
-                                    "DeviceID": "1111",
-                                    "Type": "11",
-                                    "SubType": "01",
-                                    "FileFormat": "png",
-                                    "Width": "11",
-                                    "Height": "11",
-                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
-                                }
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                "FaceList": {
-                    "FaceObject": [
-                        {
-                            "FaceID": "122323333344444",
-                            "Name": "zd",
-                            "SubImageList": {
-                                "SubImageInfo": {
-                                    "ImageID": "122323333344444",
-                                    "DeviceID": "1111",
-                                    "Type": "11",
-                                    "SubType": "01",
-                                    "FileFormat": "png",
-                                    "Width": "11",
-                                    "Height": "11",
-                                    "StoragePath": "http://127.0.0.1:9333/3,113457777"
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-        ]
+        this.faceData = data;
     }
 
     private onSearchClick = () => {

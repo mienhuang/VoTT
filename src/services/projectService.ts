@@ -51,7 +51,7 @@ export default class ProjectService implements IProjectService {
      */
     public load(project: IProject, securityToken: ISecurityToken): Promise<IProject> {
         Guard.null(project);
-
+        // TODO BUG here
         try {
             const loadedProject = decryptProject(project, securityToken);
 

@@ -152,6 +152,7 @@ export class AssetPreview extends React.Component<IAssetPreviewProps, IAssetPrev
     }
 
     private playerStateChange = (currentTime: number) => {
+        // TODO BUG here
         this.props.playerStateChange(currentTime);
         // this.playerState = state;
     }
