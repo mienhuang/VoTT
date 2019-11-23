@@ -333,10 +333,11 @@ export interface IRegion {
     tags: string[];
     points?: IPoint[];
     boundingBox?: IBoundingBox;
-    faceId?: number;
+    faceId?: string;
     trackId?: number;
     keyFrame?: boolean;
     frameIndex?: number;
+    imgPath?: string;
 }
 
 export interface ICustomRegion {
@@ -350,6 +351,7 @@ export interface ICustomRegion {
     faceId?: number;
     trackId?: number;
     keyFrame?: boolean;
+    imgPath?: string;
 }
 
 /**

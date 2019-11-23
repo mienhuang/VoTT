@@ -181,6 +181,21 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         }
     ];
 
+    private faceviewData = [
+        {
+            faceId: 'yuhiujoas',
+            path: 'aaaa'
+        },
+        {
+            faceId: 'yuhiujoas',
+            path: 'aaaa'
+        },
+        {
+            faceId: 'yuhiujoas',
+            path: 'aaaa'
+        }
+    ];
+
     public async componentDidMount() {
         const projectId = this.props.match.params["projectId"];
         if (this.props.project) {
@@ -222,6 +237,10 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         return Math.ceil((currentTime - this.videoStartTime) * frameExtractionRate) + 1;
     }
 
+    private clearFaceData = () => {
+        this.faceData = [];
+    }
+
     private playerStateChange = (currentTime: number) => {
         // this.playerState = state;
         const frameExtractionRate = this.props.project.videoSettings.frameExtractionRate;
@@ -229,7 +248,14 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         //console.log('state player change in editor....', index);
         this.setState({
             frameIndex: index
+        }, () => {
+            this.updateViewData(index);
         });
+        this.clearFaceData();
+    }
+    private updateViewData = (index) => {
+        const regions = this._frames[index] || [];
+        this.faceviewData = regions.map(({ faceId, imgPath }: IRegion) => ({ faceId, path: imgPath }))
     }
 
     private getTimeStep(): number {
@@ -732,7 +758,11 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                 onTagRenamed={this.confirmTagRenamed}
                                 onTagDeleted={this.confirmTagDeleted}
                             /> */}
-                            <PersonInfo data={this.faceData} />
+                            <PersonInfo
+                                data={this.faceData}
+                                viewData={this.faceviewData}
+                                onSelected={this.selecteFaceId}
+                            />
                             <canvas id="new-canvas"></canvas>
                         </div>
                         <Confirm title={strings.editorPage.tags.rename.title}
@@ -765,6 +795,23 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                 }
             </div>
         );
+    }
+
+    private selecteFaceId = (id: string, src: string) => {
+        console.log(this.state.selectedRegions, this._customData, this._frames)
+        const trackId = this.state.selectedRegions[0].trackId;
+        const regions = this._customData.regions[trackId];
+        regions.forEach((region: IRegion) => {
+            region.faceId = id;
+            region.imgPath = src;
+            const frameIndex = region.frameIndex;
+            this._frames[frameIndex].forEach((fr: IRegion) => {
+                if (fr.trackId === trackId) {
+                    fr.faceId = id;
+                    fr.imgPath = src;
+                }
+            })
+        });
     }
 
     private onConfigClose = () => {

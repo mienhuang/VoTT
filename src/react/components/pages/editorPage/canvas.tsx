@@ -481,9 +481,10 @@ export default class Canvas extends React.Component<ICanvasProps, ICanvasState> 
             },
             points,
             trackId: this.props.customData.maxTrackId + 1,
-            faceId: -1,
+            faceId: '-1',
             keyFrame: true,
-            frameIndex: this.props.frameIndex
+            frameIndex: this.props.frameIndex,
+            imgPath: ''
         };
 
         // this.props.customDataActions.updateRegion(newRegion);
