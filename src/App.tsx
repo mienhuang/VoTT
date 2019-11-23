@@ -63,10 +63,10 @@ export default class App extends React.Component<IAppProps> {
 
         return (
             <Fragment>
-                <ErrorHandler
+                {/* <ErrorHandler
                     error={this.props.appError}
                     onError={this.props.actions.showError}
-                    onClearError={this.props.actions.clearError} />
+                    onClearError={this.props.actions.clearError} /> */}
                 {/* Don't render app contents during a render error */}
                 {(!this.props.appError || this.props.appError.errorCode !== ErrorCode.GenericRenderError) &&
                     <KeyboardManager>
