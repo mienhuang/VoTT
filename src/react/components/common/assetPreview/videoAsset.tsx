@@ -105,6 +105,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
         let _currentTimes = 0;
         this.intervelId = setInterval(() => {
             const playerState = this.getVideoPlayerState();
+            if(!playerState) return;
             const newTime = playerState.currentTime;
             const playbackRate = playerState.playbackRate;
             if (currentTime !== newTime) {
@@ -259,6 +260,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
 
     private toggleVideoStatus = () => {
         const player = this.getVideoPlayerState();
+        if(!player) return;
         const paused = player.paused;
         if (paused) {
             this.videoPlayer.current.play();
@@ -643,6 +645,7 @@ export class VideoAsset extends React.Component<IVideoAssetProps> {
      * Gets the current video player state
      */
     private getVideoPlayerState = (): Readonly<IVideoPlayerState> => {
-        return this.videoPlayer.current.getState().player;
+        const current = this.videoPlayer.current;
+        return current ? current.getState().player : null;
     }
 }

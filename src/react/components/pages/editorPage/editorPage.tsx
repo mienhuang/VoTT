@@ -92,6 +92,8 @@ export interface IEditorPageState {
     currentSeletedRegion?: IRegion;
     frameIndex?: number;
     showConfig?: boolean;
+    faceData?: Array<any>;
+    faceViewData?: Array<any>;
 }
 
 function mapStateToProps(state: IApplicationState) {
@@ -134,7 +136,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         isValid: true,
         showInvalidRegionWarning: false,
         frameIndex: 1,
-        showConfig: false
+        showConfig: false,
+        faceData: [],
+        faceViewData: []
     };
 
     private customDataFileName = '';
@@ -160,41 +164,37 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     private deleteTagConfirm: React.RefObject<Confirm> = React.createRef();
     private deleteAllSameConfirm: React.RefObject<Confirm> = React.createRef();
     private sortedAssets: IAsset[] = [];
-    private faceData = [
-        {
-            name: "test1",
-            faceId: 'deahassda',
-            similaritydegree: 0,
-            path: 'aaaa'
-        },
-        {
-            name: 'test2',
-            faceId: 'fghjasda',
-            similaritydegree: 0,
-            path: 'aaaa'
-        },
-        {
-            name: 'test3',
-            faceId: 'yuhiujoas',
-            similaritydegree: 0,
-            path: 'aaaa'
-        }
-    ];
 
-    private faceviewData = [
-        {
-            faceId: 'yuhiujoas',
-            path: 'aaaa'
-        },
-        {
-            faceId: 'yuhiujoas',
-            path: 'aaaa'
-        },
-        {
-            faceId: 'yuhiujoas',
-            path: 'aaaa'
+    private saveFile = (e) => {
+        if (e.ctrlKey && e.keyCode === 83) {
+            const assetService = new AssetService(this.props.project);
+            let resolver = [];
+            const cData = assetService.saveCustomData(this.customDataFileName, this._customData);
+            resolver.push(cData);
+            if (this._frames && this._frames !== {}) {
+                const fData = assetService.saveCustomData(this.frameDataFileName, {
+                    ...this._frameData,
+                    frames: {
+                        ...this._frames
+                    }
+                });
+                resolver.push(fData);
+            }
+
+            Promise.all(resolver)
+                .then(() => {
+                    toast.success('保存成功！');
+                })
+                .catch(error => {
+                    toast.error('保存失败！');
+                    console.error(error);
+                })
         }
-    ];
+    };
+
+    public componentWillUnmount() {
+        document.removeEventListener('keydown', this.saveFile);
+    }
 
     public async componentDidMount() {
         const projectId = this.props.match.params["projectId"];
@@ -211,21 +211,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         this.initAssets();
         this.timeStep = this.getTimeStep();
 
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.keyCode === 83) {
-                const assetService = new AssetService(this.props.project);
-                assetService.saveCustomData(this.customDataFileName, this._customData);
-                if (this._frames && this._frames !== {}) {
-                    assetService.saveCustomData(this.frameDataFileName, {
-                        ...this._frameData,
-                        frames: {
-                            ...this._frames
-                        }
-                    });
-                }
-                toast.success('保存成功！')
-            }
-        })
+        document.addEventListener('keydown', this.saveFile)
         // this.sortedAssets = this.props.project.assets.filter(asset => asset.timestamp!= undefined)
     }
 
@@ -238,7 +224,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     }
 
     private clearFaceData = () => {
-        this.faceData = [];
+        this.setState({
+            faceData: []
+        });
     }
 
     private playerStateChange = (currentTime: number) => {
@@ -255,7 +243,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
     }
     private updateViewData = (index) => {
         const regions = this._frames[index] || [];
-        this.faceviewData = regions.map(({ faceId, imgPath }: IRegion) => ({ faceId, path: imgPath }))
+        this.setState({
+            faceViewData: regions.map(({ faceId, imgPath }: IRegion) => ({ faceId, path: imgPath }))
+        });
     }
 
     private getTimeStep(): number {
@@ -291,7 +281,7 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
         const assetService = new AssetService(this.props.project);
         // TODO BUG: first time create a project lastVisitedAssetId not exist
         const lastVisitedAssetId = this.props.project.lastVisitedAssetId;
-        if (!lastVisitedAssetId) return;
+        if (!lastVisitedAssetId || !this.props.project.assets) return;
         const asset = this.props.project.assets[lastVisitedAssetId];
         const path = asset.parent ? asset.parent.path : asset.path;
         const name = path.split('/').pop();
@@ -759,8 +749,8 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
                                 onTagDeleted={this.confirmTagDeleted}
                             /> */}
                             <PersonInfo
-                                data={this.faceData}
-                                viewData={this.faceviewData}
+                                data={this.state.faceData}
+                                viewData={this.state.faceViewData}
                                 onSelected={this.selecteFaceId}
                             />
                             <canvas id="new-canvas"></canvas>
@@ -828,7 +818,9 @@ export default class EditorPage extends React.Component<IEditorPageProps, IEdito
 
     private queryFaceCb = (data) => {
         console.log(data);
-        this.faceData = data;
+        this.setState({
+            faceData: data
+        });
     }
 
     private onSearchClick = () => {
